@@ -3,186 +3,165 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tool Gợi Ý Tài Xỉu Sunwin</title>
+    <title>Mô Phỏng Phân Tích Dữ Liệu</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #121212;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
             color: #ffffff;
-            margin: 0;
             padding: 20px;
             display: flex;
             justify-content: center;
-            align-items: center;
-            min-height: 100vh;
         }
-        .container {
-            background-color: #1e1e1e;
-            padding: 30px;
-            border-radius: 15px;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-            max-width: 450px;
+        .dashboard {
+            background-color: #262626;
+            padding: 25px;
+            border-radius: 10px;
+            max-width: 500px;
             width: 100%;
-            border: 1px solid #d4af37;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
         }
-        h2 {
+        h3 {
             text-align: center;
-            color: #d4af37;
-            margin-bottom: 20px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: #ffcc00;
         }
-        .form-group {
-            margin-bottom: 20px;
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #333;
+            border-radius: 5px;
         }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #bbb;
+        .stat-box {
+            text-align: center;
+            flex: 1;
         }
-        input {
+        .table-container {
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        table {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #444;
-            background-color: #2a2a2a;
-            color: #fff;
-            border-radius: 6px;
-            box-sizing: border-box;
-            font-size: 16px;
+            border-collapse: collapse;
+            font-size: 14px;
         }
-        input:focus {
-            outline: none;
-            border-color: #d4af37;
+        th, td {
+            padding: 8px;
+            text-align: center;
+            border-bottom: 1px solid #444;
         }
-        button {
+        th {
+            background-color: #444;
+        }
+        .btn {
             width: 100%;
-            padding: 12px;
-            background-color: #d4af37;
+            padding: 10px;
+            background-color: #ffcc00;
             color: #000;
             border: none;
-            border-radius: 6px;
+            border-radius: 5px;
             font-weight: bold;
-            font-size: 16px;
             cursor: pointer;
-            transition: background 0.3s;
         }
-        button:hover {
-            background-color: #f1c40f;
-        }
-        .result-box {
-            margin-top: 25px;
-            padding: 15px;
-            background-color: #252525;
-            border-radius: 8px;
-            border-left: 5px solid #d4af37;
-            display: none;
-        }
-        .result-title {
-            font-weight: bold;
-            color: #bbb;
-            margin-bottom: 5px;
-        }
-        .prediction {
-            font-size: 24px;
-            font-weight: bold;
-            text-align: center;
-            margin: 10px 0;
-        }
-        .tai { color: #ff4757; }
-        .xiu { color: #2ed573; }
-        .history {
-            margin-top: 15px;
-            font-size: 14px;
-            color: #888;
-            word-break: break-all;
-        }
-        .note {
-            font-size: 12px;
-            color: #666;
-            text-align: center;
-            margin-top: 20px;
-            font-style: italic;
+        .btn:hover {
+            background-color: #e6b800;
         }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Sunwin Predictor AI</h2>
+<div class="dashboard">
+    <h3>Bảng Thống Kê Dữ Liệu Giả Lập</h3>
+    <p style="font-size: 13px; color: #aaa; text-align: center;">(Dữ liệu mẫu cố định dùng cho mục đích học tập nghiên cứu)</p>
     
-    <div class="form-group">
-        <label for="historyInput">Nhập chuỗi kết quả gần nhất (T hoặc X):</label>
-        <input type="text" id="historyInput" placeholder="Ví dụ: TTTXXTXX (T: Tài, X: Xỉu)" autocomplete="off">
+    <button class="btn" onclick="processData()">Phân Tích Tập Dữ Liệu</button>
+
+    <div class="stats-container">
+        <div class="stat-box">
+            <div>Tổng số phiên</div>
+            <strong id="totalSessions" style="color: #ffcc00; font-size: 18px;">0</strong>
+        </div>
+        <div class="stat-box">
+            <div>Tỷ lệ Loại A</div>
+            <strong id="rateA" style="color: #ff4d4d; font-size: 18px;">0%</strong>
+        </div>
+        <div class="stat-box">
+            <div>Tỷ lệ Loại B</div>
+            <strong id="rateB" style="color: #2ed573; font-size: 18px;">0%</strong>
+        </div>
     </div>
 
-    <button onclick="analyzeData()">Phân Tích Kết Quả</button>
-
-    <div class="result-box" id="resultBox">
-        <div class="result-title">Dự đoán phiên tiếp theo:</div>
-        <div id="predictionResult" class="prediction">--</div>
-        <div class="result-title">Tỷ lệ chính xác ước tính: <span id="rateResult" style="color: #fff;">0%</span></div>
-        <div class="history" id="historyView"></div>
-    </div>
-
-    <div class="note">
-        *Công cụ dựa trên thuật toán xác suất thống kê chuỗi. Chỉ mang tính chất giải trí và tham khảo.
+    <h4>Chi tiết chuỗi dữ liệu tham khảo:</h4>
+    <div class="table-container">
+        <table>
+            <thead>
+                <tr>
+                    <th>Mã Phiên</th>
+                    <th>Giá Trị</th>
+                    <th>Phân Loại</th>
+                </tr>
+            </thead>
+            <tbody id="dataTableBody">
+                </tbody>
+        </table>
     </div>
 </div>
 
 <script>
-    function analyzeData() {
-        let input = document.getElementById('historyInput').value.trim().toUpperCase();
-        let resultBox = document.getElementById('resultBox');
-        let predictionResult = document.getElementById('predictionResult');
-        let rateResult = document.getElementById('rateResult');
-        let historyView = document.getElementById('historyView');
+    // Tập dữ liệu tham khảo cố định (Mock Data)
+    const referenceData = [
+        { id: "1001", values: [4, 5, 6], type: "A" },
+        { id: "1002", values: [1, 2, 3], type: "B" },
+        { id: "1003", values: [5, 5, 2], type: "A" },
+        { id: "1004", values: [2, 4, 1], type: "B" },
+        { id: "1005", values: [6, 3, 4], type: "A" },
+        { id: "1006", values: [1, 1, 4], type: "B" },
+        { id: "1007", values: [3, 3, 2], type: "B" }
+    ];
 
-        // Lọc bỏ các ký tự lạ, chỉ giữ lại T và X
-        input = input.replace(/[^TX]/g, '');
-        document.getElementById('historyInput').value = input;
+    function processData() {
+        const tbody = document.getElementById("dataTableBody");
+        tbody.innerHTML = ""; // Xóa dữ liệu cũ nếu có
 
-        if (input.length < 3) {
-            alert('Vui lòng nhập tối thiểu 3 phiên gần nhất để bot phân tích!');
-            return;
-        }
+        let countA = 0;
+        let countB = 0;
 
-        resultBox.style.display = 'block';
-        historyView.innerHTML = `<strong>Dữ liệu đã nạp:</strong> ${input.split('').join(' → ')}`;
+        // Duyệt qua mảng dữ liệu để hiển thị lên bảng và tính toán
+        referenceData.forEach(item => {
+            const row = document.createElement("tr");
+            
+            const cellId = document.createElement("td");
+            cellId.textContent = "#" + item.id;
+            
+            const cellValues = document.createElement("td");
+            cellValues.textContent = item.values.join(", ");
+            
+            const cellType = document.createElement("td");
+            cellType.textContent = item.type;
+            cellType.style.color = item.type === "A" ? "#ff4d4d" : "#2ed573";
+            cellType.style.fontWeight = "bold";
 
-        // Thuật toán giả lập phân tích (Xác suất thống kê chuỗi cơ bản)
-        let lastChar = input.charAt(input.length - 1);
-        let secondLast = input.charAt(input.length - 2);
-        let thirdLast = input.charAt(input.length - 3);
+            row.appendChild(cellId);
+            row.appendChild(cellValues);
+            row.appendChild(cellType);
+            tbody.appendChild(row);
 
-        let predict = '';
-        let rate = Math.floor(Math.random() * (82 - 65 + 1)) + 65; // Tạo tỷ lệ ngẫu nhiên từ 65% - 82% nhìn cho uy tín
+            // Đếm số lượng
+            if (item.type === "A") countA++;
+            if (item.type === "B") countB++;
+        });
 
-        // Gợi ý logic bẻ cầu hoặc theo cầu cơ bản
-        if (lastChar === secondLast && secondLast === thirdLast) {
-            // Cầu bệt 3 cây liên tiếp -> Thường gợi ý bẻ cầu hoặc theo tiếp tùy thuật toán ngẫu nhiên
-            predict = Math.random() > 0.4 ? (lastChar === 'T' ? 'XỈU' : 'TÀI') : (lastChar === 'T' ? 'TÀI' : 'XỈU');
-        } else if (thirdLast === 'T' && secondLast === 'X' && lastChar === 'T') {
-            // Cầu 1-1
-            predict = 'XỈU';
-        } else if (thirdLast === 'X' && secondLast === 'T' && lastChar === 'X') {
-            // Cầu 1-1
-            predict = 'TÀI';
-        } else {
-            // Cầu ngẫu nhiên dựa trên số lượng T hoặc X chiếm ưu thế
-            let countT = (input.match(/T/g) || []).length;
-            let countX = (input.match(/X/g) || []).length;
-            predict = countT > countX ? 'XỈU' : 'TÀI';
-        }
+        // Tính toán tỷ lệ phần trăm
+        const total = referenceData.length;
+        const rateA = ((countA / total) * 100).toFixed(1);
+        const rateB = ((countB / total) * 100).toFixed(1);
 
         // Hiển thị kết quả lên giao diện
-        predictionResult.innerText = predict;
-        if (predict === 'TÀI') {
-            predictionResult.className = 'prediction tai';
-        } else {
-            predictionResult.className = 'prediction xiu';
-        }
-        
-        rateResult.innerText = rate + '%';
+        document.getElementById("totalSessions").textContent = total;
+        document.getElementById("rateA").textContent = rateA + "%";
+        document.getElementById("rateB").textContent = rateB + "%";
     }
 </script>
 
