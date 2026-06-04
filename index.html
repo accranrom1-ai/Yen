@@ -30,5 +30,127 @@
             color: #4da8da;
             margin-bottom: 25px;
         }
-        .
+        .section {
+            margin-bottom: 20px;
+            background: #22222b;
+            padding: 15px;
+            border-radius: 8px;
+        }
+        h3 {
+            margin-top: 0;
+            font-size: 16px;
+            color: #007acc;
+            border-bottom: 1px solid #333;
+            padding-bottom: 5px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #aaa;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            background-color: #1a1a24;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-family: monospace;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #007acc;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+        button:hover {
+            background-color: #005999;
+        }
+        .result {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #1a1a24;
+            border-left: 4px solid #4da8da;
+            font-family: monospace;
+            word-break: break-all;
+        }
+        .match { color: #2ed573; font-weight: bold; }
+        .mismatch { color: #ff4757; font-weight: bold; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+
+<div class="wrapper">
+    <h2>MD5 Hash Analyzer</h2>
+
+    <div class="section">
+        <h3>1. Tạo chuỗi MD5 (Encode)</h3>
+        <label for="textInput">Nhập chuỗi văn bản gốc:</label>
+        <textarea id="textInput" rows="3" placeholder="Nhập nội dung cần mã hóa tại đây..." oninput="generateMD5()"></textarea>
+        <label style="margin-top: 10px;">Kết quả MD5 (32 ký tự):</label>
+        <div id="hashOutput" class="result">d41d8cd98f00b204e9800998ecf8427e</div>
+    </div>
+
+    <div class="section">
+        <h3>2. Đối chiếu & Xác thực chuỗi MD5 (Verify)</h3>
+        <label for="stringInput">Văn bản gốc cần kiểm tra:</label>
+        <input type="text" id="stringInput" placeholder="Ví dụ: chuoi_goc_123">
         
+        <label style="margin-top: 10px;" for="md5Input">Chuỗi MD5 hệ thống cung cấp:</label>
+        <input type="text" id="md5Input" placeholder="Ví dụ: 827ccb0eea8a706c4c34a16891f84e7b">
+        
+        <button onclick="verifyMD5()">So Sánh Tính Toàn Vẹn</button>
+        <div id="verifyResult" class="result" style="display: none;"></div>
+    </div>
+</div>
+
+<script>
+    // Hàm tự động tạo MD5 khi người dùng gõ chữ
+    function generateMD5() {
+        const text = document.getElementById('textInput').value;
+        // Sử dụng thư viện CryptoJS để băm chuỗi sang MD5
+        const hash = CryptoJS.MD5(text).toString();
+        document.getElementById('hashOutput').innerText = hash;
+    }
+
+    // Hàm đối chiếu tính toàn vẹn
+    function verifyMD5() {
+        const stringInput = document.getElementById('stringInput').value;
+        const md5Input = document.getElementById('md5Input').value.trim().toLowerCase();
+        const verifyResult = document.getElementById('verifyResult');
+
+        if (!stringInput || !md5Input) {
+            alert("Vui lòng nhập đầy đủ cả văn bản gốc và chuỗi MD5 để đối chiếu!");
+            return;
+        }
+
+        // Tạo mã MD5 từ văn bản người dùng nhập vào để so sánh
+        const calculatedHash = CryptoJS.MD5(stringInput).toString();
+
+        verifyResult.style.display = "block";
+        
+        if (calculatedHash === md5Input) {
+            verifyResult.innerHTML = `
+                <span class="match">✓ TRÙNG KHỚP (Chính xác)</span><br>
+                <small style="color:#888;">Dữ liệu toàn vẹn, không bị chỉnh sửa cấu trúc.</small>
+            `;
+        } else {
+            verifyResult.innerHTML = `
+                <span class="mismatch">✕ KHÔNG TRÙNG KHỚP</span><br>
+                <small style="color:#aa8888;">MD5 thực tế của văn bản: ${calculatedHash}</small>
+            `;
+        }
+    }
+</script>
+
+</body>
+</html>
