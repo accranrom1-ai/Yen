@@ -1,51 +1,277 @@
-import hashlib
-import os
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tool Phân Tích MD5 Siêu Tốc</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <style>
+        :root {
+            --primary-color: #4f46e5;
+            --success-color: #10b981;
+            --danger-color: #ef4444;
+            --bg-color: #f3f4f6;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+        h2 {
+            text-align: center;
+            color: #1f2937;
+            margin-top: 0;
+        }
+        .tabs {
+            display: flex;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: none;
+            border: none;
+            font-size: 16px;
+            font-weight: 600;
+            color: #6b7280;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn.active {
+            color: var(--primary-color);
+            border-bottom: 3px solid var(--primary-color);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            box-sizing: border-box;
+            font-size: 14px;
+        }
+        textarea {
+            resize: vertical;
+            height: 80px;
+        }
+        .drop-zone {
+            border: 2px dashed #top #cbd5e1;
+            border: 2px dashed var(--primary-color);
+            background: #f8fafc;
+            padding: 30px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #64748b;
+            transition: background 0.3s;
+        }
+        .drop-zone:hover {
+            background: #f0fdf4;
+        }
+        .result-box {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8fafc;
+            border-left: 4px solid var(--primary-color);
+            border-radius: 4px;
+            word-break: break-all;
+        }
+        .result-title {
+            font-weight: bold;
+            color: #334155;
+            margin-bottom: 5px;
+        }
+        .md5-output {
+            font-family: monospace;
+            font-size: 16px;
+            color: #0f172a;
+            background: #e2e8f0;
+            padding: 5px 8px;
+            border-radius: 4px;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        .alert {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            font-weight: 600;
+            display: none;
+        }
+        .alert-success { background: #d1fae5; color: #065f46; }
+        .alert-danger { background: #fee2e2; color: #991b1b; }
+        .loading {
+            display: none;
+            color: var(--primary-color);
+            font-weight: bold;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
 
-def generate_text_md5(text):
-    """Tạo mã MD5 từ một chuỗi văn bản"""
-    md5_hash = hashlib.md5(text.encode('utf-8'))
-    return md5_hash.hexdigest()
+<div class="container">
+    <h2>🔑 Tool Phân Tích & Kiểm Tra MD5</h2>
+    
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('text-tab')">Mã Hóa Văn Bản</button>
+        <button class="tab-btn" onclick="switchTab('file-tab')">Xử Lý File</button>
+    </div>
 
-def generate_file_md5(file_path):
-    """Tạo mã MD5 từ một file (đọc theo block để tránh tràn RAM với file lớn)"""
-    if not os.path.exists(file_path):
-        return None
-    
-    md5_hash = hashlib.md5()
-    try:
-        with open(file_path, "rb") as f:
-            # Đọc từng khối 4096 bytes
-            for byte_block in iter(lambda: f.read(4096), b""):
-                md5_hash.update(byte_block)
-        return md5_hash.hexdigest()
-    except Exception as e:
-        print(f"[!] Lỗi khi đọc file: {e}")
-        return None
+    <div id="text-tab" class="tab-content active">
+        <div class="form-group">
+            <label for="text-input">Nhập văn bản cần băm MD5:</label>
+            <textarea id="text-input" placeholder="Nhập chuỗi văn bản vào đây..." oninput="hashText()"></textarea>
+        </div>
+        <div class="result-box">
+            <div class="result-title">Kết quả MD5:</div>
+            <div id="text-result" class="md5-output">d41d8cd98f00b204e9800998ecf8427e</div>
+        </div>
+    </div>
 
-def check_integrity():
-    """Kiểm tra tính toàn vẹn của file"""
-    file_path = input("👉 Nhập đường dẫn đến file cần kiểm tra: ").strip(' "\'')
-    expected_md5 = input("👉 Nhập mã MD5 mẫu (để so sánh): ").strip().lower()
-    
-    print("\n[...] Đang tính toán MD5 của file...")
-    current_md5 = generate_file_md5(file_path)
-    
-    if current_md5 is None:
-        print("❌ Không tìm thấy file hoặc file bị lỗi.")
-        return
+    <div id="file-tab" class="tab-content">
+        <div class="form-group">
+            <label>Chọn hoặc Kéo thả file vào vùng dưới đây:</label>
+            <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+                📁 Kéo & thả file vào đây hoặc <span style="color:var(--primary-color); text-decoration: underline;">Bấm để chọn file</span>
+                <p id="file-name" style="margin-top: 10px; font-weight: bold; color: #1e293b;"></p>
+            </div>
+            <input type="file" id="file-input" style="display: none;" onchange="handleFileSelect(this.files[0])">
+        </div>
+
+        <div id="loading" class="loading">⏳ Đang tính toán MD5 (Có thể mất vài giây với file lớn)...</div>
+
+        <div class="result-box" id="file-result-box" style="display: none;">
+            <div class="result-title">MD5 của File:</div>
+            <div id="file-md5-output" class="md5-output">-</div>
+            
+            <div class="form-group" style="margin-top: 20px;">
+                <label for="compare-input">Nhập MD5 mẫu để đối chiếu tính toàn vẹn (Nếu có):</label>
+                <input type="text" id="compare-input" placeholder="Ví dụ: 7a56a6486a65b..." oninput="compareMD5()">
+            </div>
+            <div id="compare-alert" class="alert"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Hàm chuyển đổi qua lại giữa các Tab
+    function switchTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
         
-    print(f"-> MD5 của file: {current_md5}")
-    print(f"-> MD5 mẫu:      {expected_md5}")
-    
-    if current_md5 == expected_md5:
-        print("\n✅ KẾT QUẢ: File AN TOÀN! Mã MD5 trùng khớp hoàn toàn.")
-    else:
-        print("\n❌ CẢNH BÁO: Mã MD5 KHÔNG trùng khớp! File có thể đã bị sửa đổi hoặc lỗi.")
+        document.getElementById(tabId).classList.add('active');
+        event.currentTarget.classList.add('active');
+    }
 
-def main():
-    while True:
-        print("\n" + "="*40)
-        print("   CHƯƠNG TRÌNH PHÂN TÍCH & TẠO MD5")
-        print("="*40)
-        print("1. Tạo MD
+    // Xử lý băm chữ (Text) trực tiếp khi gõ
+    function hashText() {
+        const text = document.getElementById('text-input').value;
+        const hash = CryptoJS.MD5(text).toString();
+        document.getElementById('text-result').innerText = hash;
+    }
+
+    // Xử lý kéo thả file
+    const dropZone = document.getElementById('drop-zone');
+    dropZone.ondragover = function() { this.style.background = '#e0f2fe'; return false; };
+    dropZone.ondragleave = function() { this.style.background = '#f8fafc'; return false; };
+    dropZone.ondrop = function(e) {
+        e.preventDefault();
+        this.style.background = '#f8fafc';
+        if (e.dataTransfer.files.length > 0) {
+            handleFileSelect(e.dataTransfer.files[0]);
+        }
+    };
+
+    // Biến lưu trữ MD5 file hiện tại để đối chiếu
+    let currentFileMD5 = "";
+
+    // Đọc file theo dạng Chunk (khối) để tránh bị đơ/treo trình duyệt khi file lớn
+    function handleFileSelect(file) {
+        if (!file) return;
         
+        document.getElementById('file-name').innerText = `${file.name} (${(file.size/1024/1024).toFixed(2)} MB)`;
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('file-result-box').style.display = 'none';
+        document.getElementById('compare-input').value = "";
+        document.getElementById('compare-alert').style.display = 'none';
+
+        const algo = CryptoJS.algo.MD5.create();
+        const chunkSize = 2097152; // Đọc từng khối 2MB
+        let offset = 0;
+        const reader = new FileReader();
+
+        reader.onload = function(e) {
+            const wordArray = CryptoJS.lib.WordArray.create(e.target.result);
+            algo.update(wordArray);
+            offset += chunkSize;
+            
+            if (offset < file.size) {
+                readNext();
+            } else {
+                const hash = algo.finalize();
+                currentFileMD5 = hash.toString();
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('file-result-box').style.display = 'block';
+                document.getElementById('file-md5-output').innerText = currentFileMD5;
+            }
+        };
+
+        function readNext() {
+            const slice = file.slice(offset, offset + chunkSize);
+            reader.readAsArrayBuffer(slice);
+        }
+
+        readNext();
+    }
+
+    // Đối chiếu so sánh 2 mã MD5
+    function compareMD5() {
+        const compareValue = document.getElementById('compare-input').value.trim().toLowerCase();
+        const alertBox = document.getElementById('compare-alert');
+        
+        if (!compareValue) {
+            alertBox.style.display = 'none';
+            return;
+        }
+
+        alertBox.style.display = 'block';
+        if (compareValue === currentFileMD5) {
+            alertBox.className = "alert alert-success";
+            alertBox.innerText = "✅ Khớp hoàn toàn! File an toàn và nguyên vẹn.";
+        } else {
+            alertBox.className = "alert alert-danger";
+            alertBox.innerText = "❌ Không khớp! File có sự thay đổi hoặc mã mẫu sai.";
+        }
+    }
+</script>
+</body>
+                                                       </html>
+
