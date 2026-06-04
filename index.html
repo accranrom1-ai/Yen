@@ -1,156 +1,51 @@
-<!DOCTYPE html>
-<html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Công Cụ Phân Tích & Kiểm Tra MD5</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #1e1e24;
-            color: #e0e0e0;
-            margin: 0;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-        .wrapper {
-            background-color: #2a2a35;
-            padding: 30px;
-            border-radius: 12px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-            max-width: 600px;
-            width: 100%;
-            border: 1px solid #444454;
-        }
-        h2 {
-            text-align: center;
-            color: #4da8da;
-            margin-bottom: 25px;
-        }
-        .section {
-            margin-bottom: 20px;
-            background: #22222b;
-            padding: 15px;
-            border-radius: 8px;
-        }
-        h3 {
-            margin-top: 0;
-            font-size: 16px;
-            color: #007acc;
-            border-bottom: 1px solid #333;
-            padding-bottom: 5px;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-size: 14px;
-            color: #aaa;
-        }
-        input, textarea {
-            width: 100%;
-            padding: 10px;
-            background-color: #1a1a24;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 4px;
-            box-sizing: border-box;
-            font-family: monospace;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #007acc;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background-color: #005999;
-        }
-        .result {
-            margin-top: 10px;
-            padding: 10px;
-            background-color: #1a1a24;
-            border-left: 4px solid #4da8da;
-            font-family: monospace;
-            word-break: break-all;
-        }
-        .match { color: #2ed573; font-weight: bold; }
-        .mismatch { color: #ff4757; font-weight: bold; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
-</head>
-<body>
+import hashlib
+import os
 
-<div class="wrapper">
-    <h2>MD5 Hash Analyzer</h2>
+def generate_text_md5(text):
+    """Tạo mã MD5 từ một chuỗi văn bản"""
+    md5_hash = hashlib.md5(text.encode('utf-8'))
+    return md5_hash.hexdigest()
 
-    <div class="section">
-        <h3>1. Tạo chuỗi MD5 (Encode)</h3>
-        <label for="textInput">Nhập chuỗi văn bản gốc:</label>
-        <textarea id="textInput" rows="3" placeholder="Nhập nội dung cần mã hóa tại đây..." oninput="generateMD5()"></textarea>
-        <label style="margin-top: 10px;">Kết quả MD5 (32 ký tự):</label>
-        <div id="hashOutput" class="result">d41d8cd98f00b204e9800998ecf8427e</div>
-    </div>
+def generate_file_md5(file_path):
+    """Tạo mã MD5 từ một file (đọc theo block để tránh tràn RAM với file lớn)"""
+    if not os.path.exists(file_path):
+        return None
+    
+    md5_hash = hashlib.md5()
+    try:
+        with open(file_path, "rb") as f:
+            # Đọc từng khối 4096 bytes
+            for byte_block in iter(lambda: f.read(4096), b""):
+                md5_hash.update(byte_block)
+        return md5_hash.hexdigest()
+    except Exception as e:
+        print(f"[!] Lỗi khi đọc file: {e}")
+        return None
 
-    <div class="section">
-        <h3>2. Đối chiếu & Xác thực chuỗi MD5 (Verify)</h3>
-        <label for="stringInput">Văn bản gốc cần kiểm tra:</label>
-        <input type="text" id="stringInput" placeholder="Ví dụ: chuoi_goc_123">
+def check_integrity():
+    """Kiểm tra tính toàn vẹn của file"""
+    file_path = input("👉 Nhập đường dẫn đến file cần kiểm tra: ").strip(' "\'')
+    expected_md5 = input("👉 Nhập mã MD5 mẫu (để so sánh): ").strip().lower()
+    
+    print("\n[...] Đang tính toán MD5 của file...")
+    current_md5 = generate_file_md5(file_path)
+    
+    if current_md5 is None:
+        print("❌ Không tìm thấy file hoặc file bị lỗi.")
+        return
         
-        <label style="margin-top: 10px;" for="md5Input">Chuỗi MD5 hệ thống cung cấp:</label>
-        <input type="text" id="md5Input" placeholder="Ví dụ: 827ccb0eea8a706c4c34a16891f84e7b">
+    print(f"-> MD5 của file: {current_md5}")
+    print(f"-> MD5 mẫu:      {expected_md5}")
+    
+    if current_md5 == expected_md5:
+        print("\n✅ KẾT QUẢ: File AN TOÀN! Mã MD5 trùng khớp hoàn toàn.")
+    else:
+        print("\n❌ CẢNH BÁO: Mã MD5 KHÔNG trùng khớp! File có thể đã bị sửa đổi hoặc lỗi.")
+
+def main():
+    while True:
+        print("\n" + "="*40)
+        print("   CHƯƠNG TRÌNH PHÂN TÍCH & TẠO MD5")
+        print("="*40)
+        print("1. Tạo MD
         
-        <button onclick="verifyMD5()">So Sánh Tính Toàn Vẹn</button>
-        <div id="verifyResult" class="result" style="display: none;"></div>
-    </div>
-</div>
-
-<script>
-    // Hàm tự động tạo MD5 khi người dùng gõ chữ
-    function generateMD5() {
-        const text = document.getElementById('textInput').value;
-        // Sử dụng thư viện CryptoJS để băm chuỗi sang MD5
-        const hash = CryptoJS.MD5(text).toString();
-        document.getElementById('hashOutput').innerText = hash;
-    }
-
-    // Hàm đối chiếu tính toàn vẹn
-    function verifyMD5() {
-        const stringInput = document.getElementById('stringInput').value;
-        const md5Input = document.getElementById('md5Input').value.trim().toLowerCase();
-        const verifyResult = document.getElementById('verifyResult');
-
-        if (!stringInput || !md5Input) {
-            alert("Vui lòng nhập đầy đủ cả văn bản gốc và chuỗi MD5 để đối chiếu!");
-            return;
-        }
-
-        // Tạo mã MD5 từ văn bản người dùng nhập vào để so sánh
-        const calculatedHash = CryptoJS.MD5(stringInput).toString();
-
-        verifyResult.style.display = "block";
-        
-        if (calculatedHash === md5Input) {
-            verifyResult.innerHTML = `
-                <span class="match">✓ TRÙNG KHỚP (Chính xác)</span><br>
-                <small style="color:#888;">Dữ liệu toàn vẹn, không bị chỉnh sửa cấu trúc.</small>
-            `;
-        } else {
-            verifyResult.innerHTML = `
-                <span class="mismatch">✕ KHÔNG TRÙNG KHỚP</span><br>
-                <small style="color:#aa8888;">MD5 thực tế của văn bản: ${calculatedHash}</small>
-            `;
-        }
-    }
-</script>
-
-</body>
-</html>
