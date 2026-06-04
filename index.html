@@ -3,167 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mô Phỏng Phân Tích Dữ Liệu</title>
+    <title>Công Cụ Phân Tích & Kiểm Tra MD5</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
-            background-color: #1a1a1a;
-            color: #ffffff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e24;
+            color: #e0e0e0;
+            margin: 0;
             padding: 20px;
             display: flex;
             justify-content: center;
+            align-items: center;
+            min-height: 100vh;
         }
-        .dashboard {
-            background-color: #262626;
-            padding: 25px;
-            border-radius: 10px;
-            max-width: 500px;
+        .wrapper {
+            background-color: #2a2a35;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            max-width: 600px;
             width: 100%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            border: 1px solid #444454;
         }
-        h3 {
+        h2 {
             text-align: center;
-            color: #ffcc00;
+            color: #4da8da;
+            margin-bottom: 25px;
         }
-        .stats-container {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-            padding: 15px;
-            background-color: #333;
-            border-radius: 5px;
-        }
-        .stat-box {
-            text-align: center;
-            flex: 1;
-        }
-        .table-container {
-            margin-top: 15px;
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        th, td {
-            padding: 8px;
-            text-align: center;
-            border-bottom: 1px solid #444;
-        }
-        th {
-            background-color: #444;
-        }
-        .btn {
-            width: 100%;
-            padding: 10px;
-            background-color: #ffcc00;
-            color: #000;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn:hover {
-            background-color: #e6b800;
-        }
-    </style>
-</head>
-<body>
-
-<div class="dashboard">
-    <h3>Bảng Thống Kê Dữ Liệu Giả Lập</h3>
-    <p style="font-size: 13px; color: #aaa; text-align: center;">(Dữ liệu mẫu cố định dùng cho mục đích học tập nghiên cứu)</p>
-    
-    <button class="btn" onclick="processData()">Phân Tích Tập Dữ Liệu</button>
-
-    <div class="stats-container">
-        <div class="stat-box">
-            <div>Tổng số phiên</div>
-            <strong id="totalSessions" style="color: #ffcc00; font-size: 18px;">0</strong>
-        </div>
-        <div class="stat-box">
-            <div>Tỷ lệ Loại A</div>
-            <strong id="rateA" style="color: #ff4d4d; font-size: 18px;">0%</strong>
-        </div>
-        <div class="stat-box">
-            <div>Tỷ lệ Loại B</div>
-            <strong id="rateB" style="color: #2ed573; font-size: 18px;">0%</strong>
-        </div>
-    </div>
-
-    <h4>Chi tiết chuỗi dữ liệu tham khảo:</h4>
-    <div class="table-container">
-        <table>
-            <thead>
-                <tr>
-                    <th>Mã Phiên</th>
-                    <th>Giá Trị</th>
-                    <th>Phân Loại</th>
-                </tr>
-            </thead>
-            <tbody id="dataTableBody">
-                </tbody>
-        </table>
-    </div>
-</div>
-
-<script>
-    // Tập dữ liệu tham khảo cố định (Mock Data)
-    const referenceData = [
-        { id: "1001", values: [4, 5, 6], type: "A" },
-        { id: "1002", values: [1, 2, 3], type: "B" },
-        { id: "1003", values: [5, 5, 2], type: "A" },
-        { id: "1004", values: [2, 4, 1], type: "B" },
-        { id: "1005", values: [6, 3, 4], type: "A" },
-        { id: "1006", values: [1, 1, 4], type: "B" },
-        { id: "1007", values: [3, 3, 2], type: "B" }
-    ];
-
-    function processData() {
-        const tbody = document.getElementById("dataTableBody");
-        tbody.innerHTML = ""; // Xóa dữ liệu cũ nếu có
-
-        let countA = 0;
-        let countB = 0;
-
-        // Duyệt qua mảng dữ liệu để hiển thị lên bảng và tính toán
-        referenceData.forEach(item => {
-            const row = document.createElement("tr");
-            
-            const cellId = document.createElement("td");
-            cellId.textContent = "#" + item.id;
-            
-            const cellValues = document.createElement("td");
-            cellValues.textContent = item.values.join(", ");
-            
-            const cellType = document.createElement("td");
-            cellType.textContent = item.type;
-            cellType.style.color = item.type === "A" ? "#ff4d4d" : "#2ed573";
-            cellType.style.fontWeight = "bold";
-
-            row.appendChild(cellId);
-            row.appendChild(cellValues);
-            row.appendChild(cellType);
-            tbody.appendChild(row);
-
-            // Đếm số lượng
-            if (item.type === "A") countA++;
-            if (item.type === "B") countB++;
-        });
-
-        // Tính toán tỷ lệ phần trăm
-        const total = referenceData.length;
-        const rateA = ((countA / total) * 100).toFixed(1);
-        const rateB = ((countB / total) * 100).toFixed(1);
-
-        // Hiển thị kết quả lên giao diện
-        document.getElementById("totalSessions").textContent = total;
-        document.getElementById("rateA").textContent = rateA + "%";
-        document.getElementById("rateB").textContent = rateB + "%";
-    }
-</script>
-
-</body>
-</html>
+        .
+        
