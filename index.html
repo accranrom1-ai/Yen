@@ -473,6 +473,141 @@
             transform: translateY(-1px);
         }
 
+        /* ------------------------------------------- */
+        /* TRANG SAU KHI ĐĂNG NHẬP (DASHBOARD) STYLES */
+        /* ------------------------------------------- */
+        .dashboard-section {
+            display: none; /* Ẩn mặc định, chỉ hiện khi đăng nhập */
+            min-height: 100vh;
+            padding: 120px 8% 60px 8%;
+        }
+
+        .db-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 20px;
+        }
+
+        .db-header h2 {
+            font-size: 2rem;
+            font-weight: 700;
+        }
+
+        .db-header h2 span {
+            background: linear-gradient(90deg, #00f2fe, #b800ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 20px;
+            border-radius: 50px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+
+        .user-avatar {
+            width: 35px;
+            height: 35px;
+            background: linear-gradient(135deg, #00f2fe, #b800ff);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #fff;
+        }
+
+        .db-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 25px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 25px;
+            position: relative;
+        }
+
+        .stat-card .stat-title {
+            color: #94a3b8;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .stat-card .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .stat-card .stat-value.glow {
+            color: #00f2fe;
+            text-shadow: 0 0 10px rgba(0, 242, 254, 0.3);
+        }
+
+        .stat-card .stat-desc {
+            font-size: 12px;
+            color: #4ade80;
+            margin-top: 5px;
+        }
+
+        .console-box {
+            background: #05060a;
+            border: 1px solid rgba(0, 242, 254, 0.1);
+            border-radius: 16px;
+            padding: 30px;
+            font-family: 'Courier New', Courier, monospace;
+        }
+
+        .console-box h3 {
+            font-family: 'Segoe UI', sans-serif;
+            margin-bottom: 15px;
+            color: #00f2fe;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .console-line {
+            color: #a7f3d0;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        .console-line span {
+            color: #64748b;
+        }
+
+        .btn-logout {
+            background: transparent;
+            border: 1px solid rgba(255, 60, 60, 0.4);
+            color: #ff3b3b;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: 0.3s;
+        }
+
+        .btn-logout:hover {
+            background: #ff3b3b;
+            color: #fff;
+            box-shadow: 0 0 15px rgba(255, 59, 59, 0.3);
+        }
+
         /* RESPONSIVE */
         @media (max-width: 768px) {
             nav, .btn-connect {
@@ -498,122 +633,69 @@
                 padding: 30px 20px;
                 width: 90%;
             }
+            .db-header {
+                flex-direction: column;
+                gap: 15px;
+                align-items: flex-start;
+            }
+            .user-profile {
+                width: 100%;
+                justify-content: space-between;
+            }
         }
     </style>
 </head>
 <body>
 
-    <!-- NAV BAR -->
-    <header>
-        <div class="logo">TECHVERSE</div>
-        <nav>
-            <ul>
-                <li><a href="#">Trang chủ</a></li>
-                <li><a href="#features">Tính năng</a></li>
-                <li><a href="#contact">Liên hệ</a></li>
-            </ul>
-        </nav>
-        <button class="btn-connect" onclick="openAuthModal()">Khám Phá Ngay</button>
-    </header>
+    <div id="landing-page">
+        <header>
+            <div class="logo">TECHVERSE</div>
+            <nav>
+                <ul>
+                    <li><a href="#">Trang chủ</a></li>
+                    <li><a href="#features">Tính năng</a></li>
+                    <li><a href="#contact">Liên hệ</a></li>
+                </ul>
+            </nav>
+            <button class="btn-connect" onclick="openAuthModal()">Khám Phá Ngay</button>
+        </header>
 
-    <!-- 1. HOME / HERO SECTION -->
-    <section class="hero">
-        <div class="badge">Trải nghiệm kỷ nguyên số mới</div>
-        <h1><span>Chào Mừng Bạn Đã Đến</span></h1>
-        <p>Tối ưu hóa hiệu suất công việc, tự động hóa quy trình vận hành và nâng tầm bảo mật dữ liệu của bạn với sức mạnh từ trí tuệ nhân tạo đám mây.</p>
-        <div class="cta-group">
-            <button class="btn-primary" onclick="openAuthModal()">Bắt đầu miễn phí</button>
-        </div>
-    </section>
-
-    <!-- 2. FEATURES SECTION -->
-    <section class="features" id="features">
-        <div class="section-title">
-            <h2>Tính Năng <span>Vượt Trội</span></h2>
-            <p>Được thiết kế để đón đầu xu hướng công nghệ tương lai</p>
-        </div>
-        
-        <div class="grid">
-            <div class="card">
-                <div class="icon">⚡</div>
-                <h3>Tốc Độ Siêu Việt</h3>
-                <p>Xử lý dữ liệu thời gian thực với độ trễ gần như bằng không nhờ hệ thống máy chủ đám mây thế hệ mới.</p>
+        <section class="hero">
+            <div class="badge">Trải nghiệm kỷ nguyên số mới</div>
+            <h1><span>Chào Mừng Bạn Đã Đến</span></h1>
+            <p>Tối ưu hóa hiệu suất công việc, tự động hóa quy trình vận hành và nâng tầm bảo mật dữ liệu của bạn với sức mạnh từ trí tuệ nhân tạo đám mây.</p>
+            <div class="cta-group">
+                <button class="btn-primary" onclick="openAuthModal()">Bắt đầu miễn phí</button>
             </div>
-            <div class="card">
-                <div class="icon">🤖</div>
-                <h3>Trí Tuệ Nhân Tạo AI</h3>
-                <p>Tự động hóa các tác vụ phức tạp, phân tích hành vi người dùng và đưa ra dự đoán chính xác.</p>
+        </section>
+
+        <section class="features" id="features">
+            <div class="section-title">
+                <h2>Tính Năng <span>Vượt Trội</span></h2>
+                <p>Được thiết kế để đón đầu xu hướng công nghệ tương lai</p>
             </div>
-            <div class="card">
-                <div class="icon">🔒</div>
-                <h3>An Ninh Tối Đa</h3>
-    <p>Kiến trúc phi tập trung mã hóa dữ liệu ngay tại thiết bị, đảm bảo không một ai – kể cả chúng tôi – có thể tiếp cận thông tin của bạn.</p>
-</div>
-
-
-    <!-- 3. TELEGRAM CONTACT SECTION -->
-    <section class="telegram-section" id="contact">
-        <div class="telegram-box">
-            <div class="tg-icon">✈</div>
-            <h2>Kết Nối Qua Telegram</h2>
-            <p>Bạn cần hỗ trợ kỹ thuật, hợp tác phát triển hoặc muốn tìm hiểu sâu hơn về hệ sinh thái của chúng tôi? Hãy liên hệ ngay để nhận phản hồi trong vòng vài phút.</p>
-            <a href="https://t.me/Taichxnhieu" target="_blank" class="btn-telegram">
-                t.me/Taichxnhieu
-            </a>
-        </div>
-    </section>
-
-    <!-- MODAL POPUP BACKGROUND WINDOW -->
-    <div class="modal-overlay" id="authModal">
-        <div class="auth-container">
-            <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
-            <h3>Khởi Tạo <span>Tài Khoản</span></h3>
-            <p class="subtitle">Tham gia vào mạng lưới công nghệ tương lai TechVerse</p>
             
-            <form onsubmit="handleAuthSubmit(event)">
-                <div class="form-group">
-                    <label>Tên tài khoản / Email</label>
-                    <input type="text" placeholder="Nhập email của bạn..." required>
+            <div class="grid">
+                <div class="card">
+                    <div class="icon">⚡</div>
+                    <h3>Tốc Độ Siêu Việt</h3>
+                    <p>Xử lý dữ liệu thời gian thực với độ trễ gần như bằng không nhờ hệ thống máy chủ đám mây thế hệ mới.</p>
                 </div>
-                <div class="form-group">
-                    <label>Mật mã bảo mật</label>
-                    <input type="password" placeholder="Nhập mật khẩu..." required>
+                <div class="card">
+                    <div class="icon">🤖</div>
+                    <h3>Trí Tuệ Nhân Tạo AI</h3>
+                    <p>Tự động hóa các tác vụ phức tạp, phân tích hành vi người dùng và đưa ra dự đoán chính xác.</p>
                 </div>
-                <div class="form-group">
-                    <label>Xác nhận mật mã</label>
-                    <input type="password" placeholder="Nhập lại mật khẩu..." required>
+                <div class="card">
+                    <div class="icon">🔒</div>
+                    <h3>An Ninh Tối Đa</h3>
+                    <p>Kiến trúc phi tập trung mã hóa dữ liệu ngay tại thiết bị, đảm bảo không một ai – kể cả chúng tôi – có thể tiếp cận thông tin của bạn.</p>
                 </div>
-                <button type="submit" class="btn-submit-auth">Kích Hoạt Tài Khoản</button>
-            </form>
-        </div>
-    </div>
+            </div>
+        </section>
 
-    <!-- JAVASCRIPT -->
-    <script>
-        const modal = document.getElementById('authModal');
-
-        function openAuthModal() {
-            modal.classList.add('active');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeAuthModal() {
-            modal.classList.remove('active');
-            document.body.style.overflow = 'auto';
-        }
-
-        modal.addEventListener('click', function(e) {
-            if (e.target === modal) {
-                closeAuthModal();
-            }
-        });
-
-        function handleAuthSubmit(event) {
-            event.preventDefault();
-            alert('Yêu cầu kích hoạt tài khoản thành công! Hệ thống đang thiết lập môi trường dữ liệu cho bạn.');
-            closeAuthModal();
-        }
-    </script>
-
-</body>
-	</html>
+        <section class="telegram-section" id="contact">
+            <div class="telegram-box">
+                <div class="tg-icon">✈</div>
+                <h2>Kết Nối Qua Telegram</h2>
+                <p>Bạn cần hỗ trợ kỹ thuật, hợp tác phát triển hoặc muốn tìm hiểu sâu hơn về hệ sinh thái của chúng tôi? Hãy liên hệ ngay để nhận phản hồi trong
