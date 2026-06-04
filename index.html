@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TechVerse - Hệ Sinh Thái Công Nghệ Tương Lai</title>
+    <style>
+        /* RESET & BASE STYLES */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            scroll-behavior: smooth;
+        }
+
+        body {
+            background-color: #0a0b10;
+            color: #e2e8f0;
+            overflow-x: hidden;
+        }
+
+        /* ĐIỀU KHIỂN CHUYỂN TRANG VIA CSS */
+        .page-section {
+            display: block;
+        }
+        #dashboard-page {
+            display: none; /* Ẩn dashboard khi chưa đăng nhập */
+            min-height: 100vh;
+            background-color: #06070d;
+        }
+
+        /* ========================================================= */
+        /* STYLES TRANG CHỦ (LANDING PAGE)                           */
+        /* ========================================================= */
+        body.landing-active::before {
+            content: '';
+            position: absolute;
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #00f2fe, #4facfe);
+            top: -100px; right: -50px; border-radius: 50%; filter: blur(150px); opacity: 0.2; z-index: -1;
+        }
+        body.landing-active::after {
+            content: '';
+            position: absolute;
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #b800ff, #00f2fe);
+            top: 60%; left: -100px; border-radius: 50%; filter: blur(180px); opacity: 0.15; z-index: -1;
+        }
+
+        header {
+            display: flex; justify-content: space-between; align-items: center; padding: 20px 8%;
+            background: rgba(10, 11, 16, 0.7); backdrop-filter: blur(12px); position: fixed;
+            width: 100%; top: 0; z-index: 1000; border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        .logo { font-size: 24px; font-weight: 800; letter-spacing: 1px; background: linear-gradient(45deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        nav ul { display: flex; list-style: none; align-items: center; }
+        nav ul li { margin: 0 20px; }
+        nav ul li a { color: #94a3b8; text-decoration: none; font-size: 15px; transition: 0.3s; font-weight: 500; }
+        nav ul li a:hover { color: #00f2fe; text-shadow: 0 0 10px rgba(0, 242, 254, 0.5); }
+        .header-actions { display: flex; gap: 15px; align-items: center; }
+        .btn-login-nav { background: transparent; border: none; color: #94a3b8; cursor: pointer; font-size: 15px; font-weight: 600; transition: 0.3s; }
+        .btn-login-nav:hover { color: #00f2fe; }
+        .btn-connect { background: linear-gradient(90deg, rgba(0,242,254,0.1), rgba(184,0,255,0.1)); border: 1px solid #00f2fe; color: #00f2fe; padding: 10px 24px; border-radius: 30px; cursor: pointer; font-weight: 600; transition: 0.3s; box-shadow: 0 0 15px rgba(0, 242, 254, 0.1); }
+        .btn-connect:hover { background: linear-gradient(90deg, #00f2fe, #b800ff); color: #fff; box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); border-color: transparent; }
+
+        .hero { min-height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 20px; padding-top: 80px; }
+        .badge { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); padding: 6px 16px; border-radius: 20px; font-size: 13px; color: #00f2fe; margin-bottom: 25px; letter-spacing: 1px; text-transform: uppercase; box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05); }
+        .hero h1 { font-size: 3.5rem; font-weight: 800; line-height: 1.2; max-width: 800px; margin-bottom: 20px; }
+        .hero h1 span { background: linear-gradient(90deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .hero p { color: #94a3b8; font-size: 18px; max-width: 600px; margin-bottom: 40px; line-height: 1.6; }
+        .cta-group { display: flex; justify-content: center; gap: 20px; width: 100%; }
+        .btn-primary { background: linear-gradient(90deg, #00f2fe, #4facfe); color: #0a0b10; padding: 14px 40px; border-radius: 8px; border: none; font-weight: 600; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0, 242, 254, 0.4); }
+        .btn-secondary { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); color: #fff; padding: 14px 40px; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: 0.3s; }
+        .btn-secondary:hover { background: rgba(255, 255, 255, 0.08); border-color: #00f2fe; color: #00f2fe; transform: translateY(-2px); }
+
+        section { padding: 100px 8%; }
+        .section-title { text-align: center; margin-bottom: 60px; }
+        .section-title h2 { font-size: 2.5rem; margin-bottom: 15px; font-weight: 700; }
+        .section-title h2 span { background: linear-gradient(90deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .section-title p { color: #94a3b8; font-size: 16px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 30px; }
+        .features { background: rgba(15, 17, 26, 0.3); }
+        .card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 40px 30px; transition: 0.4s; position: relative; overflow: hidden; }
+        .card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: linear-gradient(45deg, transparent, rgba(0, 242, 254, 0.05), transparent); transform: translateX(-100%); transition: 0.6s; }
+        .card:hover::before { transform: translateX(100%); }
+        .card:hover { transform: translateY(-5px); border-color: rgba(0, 242, 254, 0.3); background: rgba(255, 255, 255, 0.04); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); }
+        .icon { width: 50px; height: 50px; background: rgba(0, 242, 254, 0.1); border-radius: 12px; display: flex; align-items: center; justify-content: center; color: #00f2fe; font-size: 24px; margin-bottom: 25px; }
+        .card h3 { font-size: 20px; margin-bottom: 15px; font-weight: 600; }
+        .card p { color: #94a3b8; font-size: 15px; line-height: 1.6; }
+
+        .telegram-section { display: flex; justify-content: center; align-items: center; background: rgba(10, 11, 16, 0.8); }
+        .telegram-box { background: linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01)); border: 1px solid rgba(0, 136, 204, 0.2); border-radius: 24px; padding: 50px 40px; text-align: center; max-width: 650px; width: 100%; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4), inset 0 0 20px rgba(0, 136, 204, 0.05); transition: 0.3s; }
+        .telegram-box:hover { border-color: rgba(0, 136, 204, 0.6); box-shadow: 0 15px 40px rgba(0, 136, 204, 0.15); }
+        .tg-icon { font-size: 45px; color: #0088cc; margin-bottom: 20px; text-shadow: 0 0 15px rgba(0, 136, 204, 0.4); }
+        .telegram-box h2 { font-size: 28px; margin-bottom: 15px; font-weight: 700; }
+        .telegram-box p { color: #94a3b8; font-size: 16px; line-height: 1.6; margin-bottom: 30px; }
+        .btn-telegram { display: inline-flex; align-items: center; gap: 10px; background: #0088cc; color: #ffffff; text-decoration: none; padding: 14px 35px; border-radius: 50px; font-weight: 600; font-size: 16px; transition: 0.3s; box-shadow: 0 4px 15px rgba(0, 136, 204, 0.3); }
+        .btn-telegram:hover { background: #0099e6; transform: translateY(-2px); box-shadow: 0 6px 25px rgba(0, 136, 204, 0.5); }
+
+        /* AUTH MODAL STYLES */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(5, 6, 10, 0.85); backdrop-filter: blur(15px); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; pointer-events: none; transition: opacity 0.4s ease; }
+        .modal-overlay.active { opacity: 1; pointer-events: auto; }
+        .auth-container { background: rgba(20, 22, 33, 0.95); border: 1px solid rgba(0, 242, 254, 0.2); padding: 40px; border-radius: 20px; width: 100%; max-width: 420px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(0, 242, 254, 0.05); position: relative; transform: translateY(-30px); transition: transform 0.4s ease; }
+        .modal-overlay.active .auth-container { transform: translateY(0); }
+        .btn-close-modal { position: absolute; top: 20px; right: 20px; background: transparent; border: none; color: #94a3b8; font-size: 22px; cursor: pointer; transition: 0.3s; }
+        .btn-close-modal:hover { color: #ff3b3b; }
+        .auth-form-panel { display: none; }
+        .auth-form-panel.active { display: block; }
+        .auth-container h3 { font-size: 24px; font-weight: 700; margin-bottom: 10px; text-align: center; }
+        .auth-container h3 span { background: linear-gradient(90deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .auth-container p.subtitle { color: #94a3b8; font-size: 14px; text-align: center; margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-group input { width: 100%; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.08); padding: 12px 16px; border-radius: 8px; color: #fff; font-size: 15px; outline: none; transition: 0.3s; }
+        .form-group input:focus { border-color: #00f2fe; background: rgba(0, 242, 254, 0.02); box-shadow: 0 0 10px rgba(0, 242, 254, 0.1); }
+        .form-options { display: flex; justify-content: flex-end; margin-top: -10px; margin-bottom: 20px; }
+        .link-forgot { font-size: 13px; color: #00f2fe; text-decoration: none; transition: 0.3s; }
+        .link-forgot:hover { color: #b800ff; text-shadow: 0 0 8px rgba(184, 0, 255, 0.4); }
+        .btn-submit-auth { width: 100%; background: linear-gradient(90deg, #00f2fe, #b800ff); color: #fff; padding: 14px; border: none; border-radius: 8px; font-weight: 600; font-size: 16px; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn-submit-auth:hover { box-shadow: 0 0 20px rgba(0, 242, 254, 0.4); transform: translateY(-1px); }
+        .form-footer { margin-top: 25px; text-align: center; font-size: 14px; color: #94a3b8; }
+        .form-footer a { color: #00f2fe; text-decoration: none; font-weight: 600; transition: 0.3s; }
+        .form-footer a:hover { color: #b800ff; }
+
+        /* ========================================================= */
+        /* STYLES TRANG DASHBOARD (SAU KHI ĐĂNG NHẬP)                */
+        /* ========================================================= */
+        .sidebar { width: 260px; background: rgba(10, 11, 16, 0.9); border-right: 1px solid rgba(0, 242, 254, 0.1); padding: 30px 20px; display: flex; flex-direction: column; justify-content: space-between; position: fixed; height: 100vh; z-index: 100; backdrop-filter: blur(10px); }
+        .brand { font-size: 22px; font-weight: 800; letter-spacing: 1px; background: linear-gradient(45deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 40px; text-align: center; }
+        .menu-links { list-style: none; flex-grow: 1; }
+        .menu-links li { margin-bottom: 10px; }
+        .menu-links a { display: flex; align-items: center; gap: 15px; color: #94a3b8; text-decoration: none; padding: 12px 15px; border-radius: 8px; font-weight: 500; transition: 0.3s; }
+        .menu-links a:hover, .menu-links li.active a { color: #00f2fe; background: rgba(0, 242, 254, 0.05); text-shadow: 0 0 10px rgba(0, 242, 254, 0.3); box-shadow: inset 0 0 10px rgba(0, 242, 254, 0.05); }
+        .user-profile { border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px; display: flex; align-items: center; gap: 12px; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, #00f2fe, #b800ff); display: flex; align-items: center; justify-content: center; font-weight: 700; color: #fff; box-shadow: 0 0 10px rgba(0, 242, 254, 0.4); }
+        .user-info .name { font-size: 14px; font-weight: 600; color: #fff; }
+        .user-info .role { font-size: 12px; color: #00f2fe; }
+        .btn-logout { margin-top: 15px; width: 100%; background: rgba(255, 59, 59, 0.1); border: 1px solid rgba(255, 59, 59, 0.2); color: #ff3b3b; padding: 10px; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.3s; }
+        .btn-logout:hover { background: #ff3b3b; color: #fff; box-shadow: 0 0 15px rgba(255, 59, 59, 0.4); }
+
+        .main-content { margin-left: 260px; padding: 40px; width: calc(100% - 260px); min-height: 100vh; position: relative; }
+        .main-content::before { content: ''; position: absolute; width: 300px; height: 300px; background: rgba(184, 0, 255, 0.1); top: 10%; right: 10%; border-radius: 50%; filter: blur(150px); z-index: -1; }
+        .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 40px; }
+        .welcome-msg h1 { font-size: 28px; font-weight: 700; }
+        .welcome-msg h1 span { background: linear-gradient(90deg, #00f2fe, #b800ff); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .welcome-msg p { color: #94a3b8; font-size: 14px; margin-top: 5px; }
+        .system-status { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 8px 16px; border-radius: 20px; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+        .status-dot { width: 8px; height: 8px; background-color: #00ff66; border-radius: 50%; box-shadow: 0 0 8px #00ff66; }
+
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 25px; margin-bottom: 40px; }
+        .stat-card { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 25px; transition: 0.3s; }
+        .stat-card:hover { border-color: rgba(0, 242, 254, 0.3); background: rgba(255, 255, 255, 0.04); transform: translateY(-3px); }
+        .stat-header { display: flex; justify-content: space-between; align-items: center; color: #94a3b8; font-size: 14px; margin-bottom: 15px; }
+        .stat-icon { font-size: 20px; color: #00f2fe; }
+        .stat-value { font-size: 26px; font-weight: 700; color: #fff; }
+        .stat-footer { font-size: 12px; margin-top: 8px; }
+        .text-up { color: #00ff66; }
+        .text-down { color: #ff3b3b; }
+
+        .data-section { background: rgba(255, 255, 255, 0.01); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 30px; }
+        .data-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .data-header h3 { font-size: 18px; font-weight: 600; }
+        .btn-action { background: linear-gradient(90deg, #00f2fe, #4facfe); color: #0a0b10; border: none; padding: 8px 16px; border-radius: 6px; font-weight: 600; font-size: 13px; cursor: pointer; transition: 0.3s; }
+        .btn-action:hover { box-shadow: 0 0 15px rgba(0, 242, 254, 0.4); transform: translateY(-1px); }
+
+        table { width: 100%; border-collapse: collapse; text-align: left; }
+        th { color: #94a3b8; font-size: 13px; text-transform: uppercase; padding: 15px 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+        td { padding: 15px 10px; font-size: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.03); }
+        tr:hover td { background: rgba(255, 255, 255, 0.01); color: #00f2fe; }
+        .badge-status { padding: 4px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+        .badge-success { background: rgba(0, 255, 102, 0.1); color: #00ff66; }
+        .badge-pending { background: rgba(255, 170, 0, 0.1); color: #ffaa00; }
+
+        /* RESPONSIVE CHUNG */
+        @media (max-width: 992px) {
+            .sidebar { width: 70px; padding: 20px 10px; }
+            .brand { font-size: 14px; margin-bottom: 30px; }
+            .menu-links a span, .user-profile, .btn-logout span { display: none; }
+            .menu-links a { justify-content: center; padding: 12px 0; }
+            .main-content { margin-left: 70px; width: calc(100% - 70px); padding: 25px; }
+        }
+        @media (max-width: 768px) {
+            .header-actions, nav { display: none; }
+            .hero h1 { font-size: 2.3rem; }
+            .hero p { font-size: 15px; }
+            .cta-group { flex-direction: column; gap: 12px; padding: 0 20px; }
+            .btn-primary, .btn-secondary, .btn-telegram { width: 100%; justify-content: center; }
+            .telegram-box { padding: 35px 20px; }
+            section { padding: 60px 5%; }
+            .auth-container { padding: 30px 20px; width: 90%; }
+        }
+        @media (max-width: 576px) {
+            #dashboard-page { flex-direction: column; }
+            .sidebar { position: relative; width: 100%; height: auto; border-right: none; border-bottom: 1px solid rgba(0, 242, 254, 0.1); padding: 15px; }
+            .brand { margin-bottom: 15px; }
+            .menu-links { display: flex; justify-content: space-around; }
+            .menu-links li { margin-bottom: 0; }
+            .user-profile, .btn-logout { display: none; }
+            .main-content { margin-left: 0; width: 100%; }
+            .top-bar { flex-direction: column; align-items: flex-start; gap: 15px; }
+            table { display: block; overflow-x: auto; }
+        }
+    </style>
+</head>
+<body class="landing-active">
+
+    /* GIAO DIỆN TRANG CHỦ (LANDING)                             */
+    <div id="landing-page" class="page-section">
+        <header>
+            <div class="logo">TECHVERSE</div>
+            <nav>
+                <ul>
+                    <li><a href="#">Trang chủ</a></li>
+                    <li><a href="#features">Tính năng</a></li>
+                    <li><a href="#contact">Liên hệ</a></li>
+                </ul>
+            </nav>
+            <div class="header-actions">
+                <button class="btn-login-nav" onclick="openAuthModal('login')">Đăng nhập</button>
+                <button class="btn-connect" onclick="openAuthModal('register')">Đăng ký</button>
+            </div>
+        </header>
+
+        <section class="hero">
+            <div class="badge">Trải nghiệm kỷ nguyên số mới</div>
+            <h1><span>Chào Mừng Bạn Đã Đến</span></h1>
+            <p>Tối ưu hóa hiệu suất công việc, tự động hóa quy trình vận hành và nâng tầm bảo mật dữ liệu của bạn với sức mạnh từ trí tuệ nhân tạo đám mây.</p>
+            <div class="cta-group">
+                <button class="btn-primary" onclick="openAuthModal('register')">Đăng ký miễn phí</button>
+                <button class="btn-secondary" onclick="openAuthModal('login')">Đăng nhập ngay</button>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <div class="section-title">
+                <h2>Tính Năng <span>Vượt Trội</span></h2>
+                <p>Được thiết kế để đón đầu xu hướng công nghệ tương lai</p>
+            </div>
+            
+            <div class="grid">
+                <div class="card">
+                    <div class="icon">⚡</div>
+                    <h3>Tốc Độ Siêu Việt</h3>
+                    <p>Xử lý dữ liệu thời gian thực với độ trễ gần như bằng không nhờ hệ thống máy chủ đám mây thế hệ mới.</p>
+                </div>
+                <div class="card">
+                    <div class="icon">🤖</div>
+                    <h3>Trí Tuệ Nhân Tạo AI</h3>
+                    <p>Tự động hóa các tác vụ phức tạp, phân tích hành vi người dùng và đư
