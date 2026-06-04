@@ -77,7 +77,6 @@
         nav ul {
             display: flex;
             list-style: none;
-            align-items: center;
         }
 
         nav ul li {
@@ -97,31 +96,11 @@
             text-shadow: 0 0 10px rgba(0, 242, 254, 0.5);
         }
 
-        .header-actions {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .btn-login-nav {
-            background: transparent;
-            border: none;
-            color: #94a3b8;
-            cursor: pointer;
-            font-size: 15px;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .btn-login-nav:hover {
-            color: #00f2fe;
-        }
-
         .btn-connect {
             background: linear-gradient(90deg, rgba(0,242,254,0.1), rgba(184,0,255,0.1));
             border: 1px solid #00f2fe;
             color: #00f2fe;
-            padding: 10px 24px;
+            padding: 10px 20px;
             border-radius: 30px;
             cursor: pointer;
             font-weight: 600;
@@ -186,7 +165,6 @@
         .cta-group {
             display: flex;
             justify-content: center;
-            gap: 20px;
             width: 100%;
         }
 
@@ -205,25 +183,6 @@
         .btn-primary:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 20px rgba(0, 242, 254, 0.4);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            color: #fff;
-            padding: 14px 40px;
-            border-radius: 8px;
-            font-weight: 600;
-            font-size: 16px;
-            cursor: pointer;
-            transition: 0.3s;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.08);
-            border-color: #00f2fe;
-            color: #00f2fe;
-            transform: translateY(-2px);
         }
 
         /* GENERAL SECTION STYLES */
@@ -388,7 +347,7 @@
             box-shadow: 0 6px 25px rgba(0, 136, 204, 0.5);
         }
 
-        /* MODAL POPUP BACKGROUND WINDOW */
+        /* MODAL ĐĂNG KÝ (POPUP) */
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -444,14 +403,6 @@
             color: #ff3b3b;
         }
 
-        .auth-form-panel {
-            display: none;
-        }
-
-        .auth-form-panel.active {
-            display: block;
-        }
-
         .auth-container h3 {
             font-size: 24px;
             font-weight: 700;
@@ -503,25 +454,6 @@
             box-shadow: 0 0 10px rgba(0, 242, 254, 0.1);
         }
 
-        .form-options {
-            display: flex;
-            justify-content: flex-end;
-            margin-top: -10px;
-            margin-bottom: 20px;
-        }
-
-        .link-forgot {
-            font-size: 13px;
-            color: #00f2fe;
-            text-decoration: none;
-            transition: 0.3s;
-        }
-
-        .link-forgot:hover {
-            color: #b800ff;
-            text-shadow: 0 0 8px rgba(184, 0, 255, 0.4);
-        }
-
         .btn-submit-auth {
             width: 100%;
             background: linear-gradient(90deg, #00f2fe, #b800ff);
@@ -541,27 +473,9 @@
             transform: translateY(-1px);
         }
 
-        .form-footer {
-            margin-top: 25px;
-            text-align: center;
-            font-size: 14px;
-            color: #94a3b8;
-        }
-
-        .form-footer a {
-            color: #00f2fe;
-            text-decoration: none;
-            font-weight: 600;
-            transition: 0.3s;
-        }
-
-        .form-footer a:hover {
-            color: #b800ff;
-        }
-
         /* RESPONSIVE */
         @media (max-width: 768px) {
-            .header-actions, nav {
+            nav, .btn-connect {
                 display: none;
             }
             .hero h1 {
@@ -570,12 +484,7 @@
             .hero p {
                 font-size: 15px;
             }
-            .cta-group {
-                flex-direction: column;
-                gap: 12px;
-                padding: 0 20px;
-            }
-            .btn-primary, .btn-secondary, .btn-telegram {
+            .btn-primary, .btn-telegram {
                 width: 100%;
                 justify-content: center;
             }
@@ -594,6 +503,7 @@
 </head>
 <body>
 
+    <!-- NAV BAR -->
     <header>
         <div class="logo">TECHVERSE</div>
         <nav>
@@ -603,22 +513,20 @@
                 <li><a href="#contact">Liên hệ</a></li>
             </ul>
         </nav>
-        <div class="header-actions">
-            <button class="btn-login-nav" onclick="openAuthModal('login')">Đăng nhập</button>
-            <button class="btn-connect" onclick="openAuthModal('register')">Đăng ký</button>
-        </div>
+        <button class="btn-connect" onclick="openAuthModal()">Khám Phá Ngay</button>
     </header>
 
+    <!-- 1. HOME / HERO SECTION -->
     <section class="hero">
         <div class="badge">Trải nghiệm kỷ nguyên số mới</div>
         <h1><span>Chào Mừng Bạn Đã Đến</span></h1>
         <p>Tối ưu hóa hiệu suất công việc, tự động hóa quy trình vận hành và nâng tầm bảo mật dữ liệu của bạn với sức mạnh từ trí tuệ nhân tạo đám mây.</p>
         <div class="cta-group">
-            <button class="btn-primary" onclick="openAuthModal('register')">Đăng ký miễn phí</button>
-            <button class="btn-secondary" onclick="openAuthModal('login')">Đăng nhập ngay</button>
+            <button class="btn-primary" onclick="openAuthModal()">Bắt đầu miễn phí</button>
         </div>
     </section>
 
+    <!-- 2. FEATURES SECTION -->
     <section class="features" id="features">
         <div class="section-title">
             <h2>Tính Năng <span>Vượt Trội</span></h2>
@@ -638,49 +546,74 @@
             </div>
             <div class="card">
                 <div class="icon">🔒</div>
-                <h3>Bảo Mật Độc Bản</h3>
-                <p>Kiến trúc phi tập trung mã hóa dữ liệu ngay tại thiết bị, đảm bảo không một ai – kể cả chúng tôi – có thể tiếp cận thông tin của bạn.</p>
-            </div>
-        </div>
-    </section>
+                <h3>An Ninh Tối Đa</h3>
+    <p>Kiến trúc phi tập trung mã hóa dữ liệu ngay tại thiết bị, đảm bảo không một ai – kể cả chúng tôi – có thể tiếp cận thông tin của bạn.</p>
+</div>
 
+
+    <!-- 3. TELEGRAM CONTACT SECTION -->
     <section class="telegram-section" id="contact">
         <div class="telegram-box">
             <div class="tg-icon">✈</div>
             <h2>Kết Nối Qua Telegram</h2>
-            <p>Bạn cần hỗ trợ kỹ thuật, hợp tác phát triển hoặc muốn tìm hiểu sâu hơn về hệ sinh thái của chúng tôi? Hãy liên hệ ngay để nhận phản hiểu trong vòng vài phút.</p>
+            <p>Bạn cần hỗ trợ kỹ thuật, hợp tác phát triển hoặc muốn tìm hiểu sâu hơn về hệ sinh thái của chúng tôi? Hãy liên hệ ngay để nhận phản hồi trong vòng vài phút.</p>
             <a href="https://t.me/Taichxnhieu" target="_blank" class="btn-telegram">
                 t.me/Taichxnhieu
             </a>
         </div>
     </section>
 
+    <!-- MODAL POPUP BACKGROUND WINDOW -->
     <div class="modal-overlay" id="authModal">
         <div class="auth-container">
             <button class="btn-close-modal" onclick="closeAuthModal()">✕</button>
+            <h3>Khởi Tạo <span>Tài Khoản</span></h3>
+            <p class="subtitle">Tham gia vào mạng lưới công nghệ tương lai TechVerse</p>
             
-            <div id="panel-login" class="auth-form-panel active">
-                <h3>Đăng <span>Nhập</span></h3>
-                <p class="subtitle">Truy cập vào trung tâm điều hành TechVerse</p>
-                <form onsubmit="handleAuthSubmit(event, 'Đăng nhập thành công! Hệ thống đang chuyển hướng...')">
-                    <div class="form-group">
-                        <label>Tên tài khoản / Email</label>
-                        <input type="text" placeholder="Nhập email hoặc tài khoản..." required>
-                    </div>
-                    <div class="form-group">
-                        <label>Mật mã bảo mật</label>
-                        <input type="password" placeholder="Nhập mật khẩu..." required>
-                    </div>
-                    <div class="form-options">
-                        <a href="#" class="link-forgot" onclick="switchPanel('forgot')">Quên mật mã?</a>
-                    </div>
-                    <button type="submit" class="btn-submit-auth">Đăng Nhập Khắp Nơi</button>
-                </form>
-                <div class="form-footer">
-                    Chưa có tài khoản? <a href="#" onclick="switchPanel('register')">Đăng ký ngay</a>
+            <form onsubmit="handleAuthSubmit(event)">
+                <div class="form-group">
+                    <label>Tên tài khoản / Email</label>
+                    <input type="text" placeholder="Nhập email của bạn..." required>
                 </div>
-            </div>
+                <div class="form-group">
+                    <label>Mật mã bảo mật</label>
+                    <input type="password" placeholder="Nhập mật khẩu..." required>
+                </div>
+                <div class="form-group">
+                    <label>Xác nhận mật mã</label>
+                    <input type="password" placeholder="Nhập lại mật khẩu..." required>
+                </div>
+                <button type="submit" class="btn-submit-auth">Kích Hoạt Tài Khoản</button>
+            </form>
+        </div>
+    </div>
 
-            <div id="panel-register" class="auth-form-panel">
-                <h3>Khởi Tạo <span>Tài Khoản</span></h3>
-     
+    <!-- JAVASCRIPT -->
+    <script>
+        const modal = document.getElementById('authModal');
+
+        function openAuthModal() {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeAuthModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = 'auto';
+        }
+
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeAuthModal();
+            }
+        });
+
+        function handleAuthSubmit(event) {
+            event.preventDefault();
+            alert('Yêu cầu kích hoạt tài khoản thành công! Hệ thống đang thiết lập môi trường dữ liệu cho bạn.');
+            closeAuthModal();
+        }
+    </script>
+
+</body>
+	</html>
