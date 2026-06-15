@@ -1,1 +1,367 @@
 
+<script>
+// ==========================================
+// 1. KHỞI TẠO & TẢI DỮ LIỆU TỪ LOCALSTORAGE
+// ==========================================
+let users = JSON.parse(localStorage.getItem('el_users')) || [
+  {username:'demo', password:'demo123', email:'demo@example.com', role:'user'},
+  {username:'admin', password:'admin123', email:'admin@earnlink.vn', role:'admin'}
+];
+
+let userState = JSON.parse(localStorage.getItem('el_userState')) || {};
+let withdrawRequests = JSON.parse(localStorage.getItem('el_withdrawRequests')) || [];
+let processedRequests = JSON.parse(localStorage.getItem('el_processedRequests')) || [];
+let adminLogs = JSON.parse(localStorage.getItem('el_adminLogs')) || [];
+
+let currentUser = null;
+let adTimerRef = null;
+
+// Hàm đồng bộ dữ liệu xuống bộ nhớ trình duyệt mỗi khi có thay đổi
+function saveToStorage() {
+  localStorage.setItem('el_users', JSON.stringify(users));
+  localStorage.setItem('el_userState', JSON.stringify(userState));
+  localStorage.setItem('el_withdrawRequests', JSON.stringify(withdrawRequests));
+  localStorage.setItem('el_processedRequests', JSON.stringify(processedRequests));
+  localStorage.setItem('el_adminLogs', JSON.stringify(adminLogs));
+}
+
+// ==========================================
+// 2. CÁC HÀM GIAO DIỆN & TIỆN ÍCH
+// ==========================================
+function fmt(n){return n.toLocaleString('vi-VN')+' ₫';}
+function nowTime(){return new Date().toLocaleTimeString('vi-VN',{hour:'2-digit',minute:'2-digit'});}
+
+function getState(u){
+  if(!userState[u]) {
+    userState[u]={balance:0,totalEarned:0,tasksDone:0,history:[],pendingWithdraw:null};
+    saveToStorage();
+  }
+  return userState[u];
+}
+
+function showAuthTab(tab){
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('on',(i===0&&tab==='login')||(i===1&&tab==='register')));
+  document.getElementById('form-login').classList.toggle('on',tab==='login');
+  document.getElementById('form-register').classList.toggle('on',tab==='register');
+  clearErrors();
+}
+
+function clearErrors(){
+  document.querySelectorAll('.err-msg').forEach(e=>e.classList.remove('show'));
+  document.querySelectorAll('input').forEach(e=>e.classList.remove('err'));
+}
+
+function togglePw(id,btn){
+  const inp=document.getElementById(id);
+  const isText=inp.type==='text';
+  inp.type=isText?'password':'text';
+  btn.innerHTML=isText?'<i class="ti ti-eye"></i>':'<i class="ti ti-eye-off"></i>';
+}
+
+function checkUser(){
+  const v=document.getElementById('r-user').value.trim();
+  const exists=users.find(u=>u.username.toLowerCase()===v.toLowerCase());
+  document.getElementById('r-user-err').classList.toggle('show',!!exists&&v.length>0);
+  document.getElementById('r-user').classList.toggle('err',!!exists&&v.length>0);
+}
+
+function checkStrength(){
+  const pw=document.getElementById('r-pass').value;
+  let s=0;
+  if(pw.length>=6)s++;if(pw.length>=10)s++;if(/[A-Z]/.test(pw))s++;if(/[0-9]/.test(pw))s++;if(/[^A-Za-z0-9]/.test(pw))s++;
+  const colors=['#ef4444','#f97316','#eab308','#84cc16','#16a34a'];
+  const fill=document.getElementById('strength-fill');
+  fill.style.width=(s/5*100)+'%';
+  fill.style.background=colors[Math.max(0,s-1)]||'#e2e8f0';
+}
+
+// ==========================================
+// 3. LOGIC ĐĂNG NHẬP / ĐĂNG KÝ
+// ==========================================
+function doLogin(){
+  clearErrors();
+  const u=document.getElementById('l-user').value.trim();
+  const p=document.getElementById('l-pass').value;
+  const user=users.find(x=>x.username===u&&x.password===p);
+  if(!user){document.getElementById('l-err').classList.add('show');document.getElementById('l-user').classList.add('err');document.getElementById('l-pass').classList.add('err');return;}
+  loginSuccess(user);
+}
+
+function doRegister(){
+  clearErrors();
+  const u=document.getElementById('r-user').value.trim();
+  const em=document.getElementById('r-email').value.trim();
+  const p=document.getElementById('r-pass').value;
+  const p2=document.getElementById('r-pass2').value;
+  if(!u||!em||!p||!p2){document.getElementById('r-general-err').classList.add('show');return;}
+  if(u.length<4){document.getElementById('r-user-err').textContent='Tên đăng nhập ít nhất 4 ký tự.';document.getElementById('r-user-err').classList.add('show');return;}
+  if(users.find(x=>x.username.toLowerCase()===u.toLowerCase())){document.getElementById('r-user-err').textContent='Tên đăng nhập đã tồn tại.';document.getElementById('r-user-err').classList.add('show');return;}
+  if(!/\S+@\S+\.\S+/.test(em)){document.getElementById('r-email-err').classList.add('show');return;}
+  if(p.length<6){document.getElementById('r-pw-err').textContent='Mật khẩu ít nhất 6 ký tự.';document.getElementById('r-pw-err').classList.add('show');return;}
+  if(p!==p2){document.getElementById('r-pw-err').textContent='Mật khẩu không khớp.';document.getElementById('r-pw-err').classList.add('show');return;}
+  
+  // Thêm user mới và lưu lại
+  users.push({username:u,email:em,password:p,role:'user'});
+  saveToStorage();
+  
+  loginSuccess(users[users.length-1]);
+}
+
+function loginSuccess(user){
+  currentUser=user;
+  if(adTimerRef){clearInterval(adTimerRef);adTimerRef=null;}
+  document.getElementById('screen-auth').classList.remove('on');
+  if(user.role==='admin'){
+    document.getElementById('screen-admin').classList.add('on');
+    renderAdminRequests();
+    // Tải lại nhật ký admin cũ
+    const el=document.getElementById('admin-log');
+    el.innerHTML=adminLogs.length ? adminLogs.slice(0,20).map(l=>`<div class="log-row">${l}</div>`).join('') : '<div>Chưa có hoạt động nào</div>';
+  } else {
+    document.getElementById('screen-app').classList.add('on');
+    document.getElementById('user-display').textContent=user.username;
+    document.getElementById('user-avatar').textContent=user.username.slice(0,2).toUpperCase();
+    const st=getState(user.username);
+    updateUI(st);renderHistory(st);renderRecent(st);showPage('home');
+    document.getElementById('pending-sec').style.display=st.pendingWithdraw?'block':'none';
+    if(st.pendingWithdraw) renderTicket(st.pendingWithdraw);
+  }
+}
+
+function doLogout(){
+  currentUser=null;
+  if(adTimerRef){clearInterval(adTimerRef);adTimerRef=null;}
+  document.getElementById('screen-app').classList.remove('on');
+  document.getElementById('screen-admin').classList.remove('on');
+  document.getElementById('screen-auth').classList.add('on');
+  document.getElementById('l-user').value='';
+  document.getElementById('l-pass').value='';
+}
+
+// ==========================================
+// 4. LOGIC LÀM NHIỆM VỤ KIẾM TIỀN
+// ==========================================
+function updateUI(st){
+  document.getElementById('bal-display').textContent=fmt(st.balance);
+  document.getElementById('w-bal').textContent=fmt(st.balance);
+  document.getElementById('stat-earned').textContent=fmt(st.totalEarned);
+  document.getElementById('stat-tasks').textContent=st.tasksDone;
+}
+
+function addTx(st,label,amount,type){
+  st.history.unshift({label,amount,type,time:nowTime()});
+  renderHistory(st);renderRecent(st);
+  saveToStorage();
+}
+
+function renderHistory(st){
+  const el=document.getElementById('history-list');
+  if(!st.history.length){el.innerHTML='<div class="empty">Chưa có giao dịch nào</div>';return;}
+  el.innerHTML=st.history.map(h=>`<div class="history-item"><div><div>${h.label}</div><div class="h-time">${h.time}</div></div><div class="${h.type==='plus'?'h-plus':'h-minus'}">${h.type==='plus'?'+':'-'}${fmt(h.amount)}</div></div>`).join('');
+}
+
+function renderRecent(st){
+  const el=document.getElementById('recent-list');
+  const r=st.history.slice(0,3);
+  if(!r.length){el.innerHTML='<div class="empty">Chưa có hoạt động nào</div>';return;}
+  el.innerHTML=r.map(h=>`<div class="history-item"><div><div>${h.label}</div><div class="h-time">${h.time}</div></div><div class="${h.type==='plus'?'h-minus':'h-minus'}">${h.type==='plus'?'+':'-'}${fmt(h.amount)}</div></div>`).join('');
+}
+
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));
+  document.getElementById('page-'+id).classList.add('on');
+  const pages=['home','tasks','withdraw','history'];
+  document.querySelectorAll('.tab')[pages.indexOf(id)].classList.add('on');
+  const st=getState(currentUser.username);
+  updateUI(st);
+}
+
+function startAd(){
+  if(adTimerRef)return;
+  let secs=30;
+  document.getElementById('ad-idle').style.display='none';
+  document.getElementById('ad-running').style.display='block';
+  adTimerRef=setInterval(()=>{
+    secs--;
+    document.getElementById('ad-count').textContent=secs;
+    document.getElementById('ad-bar').style.width=((30-secs)/30*100)+'%';
+    if(secs<=0){
+      clearInterval(adTimerRef);adTimerRef=null;
+      const st=getState(currentUser.username);
+      st.balance+=200;st.totalEarned+=200;st.tasksDone++;
+      addTx(st,'Xem quảng cáo hoàn thành',200,'plus');
+      updateUI(st);
+      saveToStorage(); // Lưu số dư mới
+      document.getElementById('ad-running').style.display='none';
+      document.getElementById('ad-idle').innerHTML='<div style="text-align:center;padding:.85rem 0"><i class="ti ti-check" style="font-size:28px;color:var(--brand)"></i><div style="font-size:13px;color:var(--muted);margin-top:6px">+200 ₫ đã được cộng vào số dư</div></div>';
+      document.getElementById('ad-idle').style.display='block';
+    }
+  },1000);
+}
+
+function doLink(id){
+  const btn=document.getElementById('lb'+id);
+  if(btn.disabled)return;
+  btn.disabled=true;let t=5;btn.textContent='5s...';
+  const iv=setInterval(()=>{
+    t--;btn.textContent=t>0?t+'s...':'Hoàn thành';
+    if(t<=0){
+      clearInterval(iv);
+      const st=getState(currentUser.username);
+      st.balance+=150;st.totalEarned+=150;st.tasksDone++;
+      addTx(st,'Vượt link #'+id,150,'plus');
+      updateUI(st);
+      saveToStorage(); // Lưu số dư mới
+      btn.style.color='var(--brand)';
+    }
+  },1000);
+}
+
+// ==========================================
+// 5. LOGIC RÚT TIỀN (USER)
+// ==========================================
+function submitWithdraw(){
+  const bank=document.getElementById('w-bank').value.trim();
+  const acc=document.getElementById('w-acc').value.trim();
+  const amt=parseInt(document.getElementById('w-amt').value);
+  const st=getState(currentUser.username);
+  if(!bank||!acc){alert('Vui lòng nhập thông tin ngân hàng.');return;}
+  if(!amt||amt<10000){alert('Số tiền rút tối thiểu 10.000 ₫.');return;}
+  if(amt>st.balance){alert('Số dư không đủ.');return;}
+  if(st.pendingWithdraw){alert('Bạn đang có yêu cầu đang xử lý.');return;}
+  
+  st.balance-=amt;
+  const req={id:Date.now(),username:currentUser.username,bank,acc,amt,time:nowTime(),status:'pending'};
+  st.pendingWithdraw=req;
+  withdrawRequests.push(req);
+  addTx(st,'Yêu cầu rút tiền — '+bank,amt,'minus');
+  updateUI(st);
+  renderTicket(req);
+  saveToStorage(); // Lưu trạng thái yêu cầu rút tiền
+  
+  document.getElementById('pending-sec').style.display='block';
+  document.getElementById('w-bank').value='';
+  document.getElementById('w-acc').value='';
+  document.getElementById('w-amt').value='';
+}
+
+function renderTicket(req){
+  const statusMap={pending:'<span class="status-pending">Đang xử lý</span>',approved:'<span class="status-approved">Đã duyệt ✓</span>',rejected:'<span class="status-rejected">Bị từ chối</span>'};
+  document.getElementById('w-ticket').innerHTML=`
+    <div class="wt-row"><span class="wt-label">Ngân hàng</span><span>${req.bank}</span></div>
+    <div class="wt-row"><span class="wt-label">Số tài khoản</span><span>${req.acc}</span></div>
+    <div class="wt-row"><span class="wt-label">Số tiền</span><span style="font-weight:700">${fmt(req.amt)}</span></div>
+    <div class="wt-row"><span class="wt-label">Gửi lúc</span><span>${req.time}</span></div>
+    <div class="wt-row"><span class="wt-label">Trạng thái</span>${statusMap[req.status]||''}</div>
+    ${req.rejectReason?`<div style="font-size:11px;color:#dc2626;margin-top:5px">Lý do từ chối: ${req.rejectReason}</div>`:''}
+    <div style="font-size:10px;color:var(--muted);margin-top:8px">Xử lý trong 1–3 ngày làm việc.</div>
+  `;
+}
+
+// ==========================================
+// 6. LOGIC DUYỆT ĐƠN (ADMIN)
+// ==========================================
+function renderAdminRequests(){
+  const pending=withdrawRequests.filter(r=>r.status==='pending');
+  document.getElementById('a-pending-count').textContent=pending.length;
+  document.getElementById('a-approved-count').textContent=processedRequests.filter(r=>r.status==='approved').length;
+  document.getElementById('a-rejected-count').textContent=processedRequests.filter(r=>r.status==='rejected').length;
+  const el=document.getElementById('pending-requests');
+  if(!pending.length){el.innerHTML='<div class="empty">Không có yêu cầu nào chờ duyệt</div>';}
+  else el.innerHTML=pending.map(r=>`
+    <div class="request-card" id="rc-${r.id}">
+      <div class="request-header">
+        <span class="request-user"><i class="ti ti-user"></i> ${r.username}</span>
+        <span class="request-amount">${fmt(r.amt)}</span>
+      </div>
+      <div class="request-info">
+        <i class="ti ti-building-bank"></i> ${r.bank} — ${r.acc}<br>
+        <i class="ti ti-clock"></i> Gửi lúc ${r.time}
+      </div>
+      <div class="request-actions">
+        <button class="btn-approve" onclick="approveRequest(${r.id})"><i class="ti ti-check"></i> Duyệt chuyển khoản</button>
+        <button class="btn-reject" onclick="showRejectForm(${r.id})"><i class="ti ti-x"></i> Từ chối</button>
+      </div>
+      <div class="reject-form" id="rf-${r.id}">
+        <select id="rs-${r.id}">
+          <option value="">— Chọn lý do từ chối (bắt buộc) —</option>
+          <option>Thông tin tài khoản ngân hàng không hợp lệ</option>
+          <option>Số dư không đủ điều kiện rút</option>
+          <option>Tài khoản chưa xác minh danh tính</option>
+          <option>Vi phạm điều khoản sử dụng</option>
+          <option>Nghi ngờ hoạt động gian lận</option>
+        </select>
+        <button class="btn-confirm-reject" onclick="confirmReject(${r.id})">Xác nhận từ chối &amp; hoàn tiền</button>
+      </div>
+    </div>
+  `).join('');
+  renderProcessed();
+}
+
+function showRejectForm(id){
+  document.getElementById('rf-'+id).classList.toggle('show');
+}
+
+function approveRequest(id){
+  const req=withdrawRequests.find(r=>r.id===id);
+  if(!req)return;
+  req.status='approved';
+  processedRequests.unshift(req);
+  withdrawRequests=withdrawRequests.filter(r=>r.id!==id);
+  addAdminLog('Duyệt yêu cầu '+fmt(req.amt)+' của '+req.username);
+  
+  const st=getState(req.username);
+  if(st.pendingWithdraw&&st.pendingWithdraw.id===id){
+    st.pendingWithdraw.status='approved';
+    st.history.unshift({label:'Rút tiền được duyệt — '+req.bank,amount:req.amt,type:'approved',time:nowTime()});
+  }
+  saveToStorage();
+  renderAdminRequests();
+}
+
+function confirmReject(id){
+  const reason=document.getElementById('rs-'+id).value;
+  if(!reason){alert('Vui lòng chọn lý do từ chối.');return;}
+  const req=withdrawRequests.find(r=>r.id===id);
+  if(!req)return;
+  req.status='rejected';req.rejectReason=reason;
+  processedRequests.unshift(req);
+  withdrawRequests=withdrawRequests.filter(r=>r.id!==id);
+  addAdminLog('Từ chối '+fmt(req.amt)+' của '+req.username+' — '+reason);
+  
+  const st=getState(req.username);
+  st.balance+=req.amt; // Hoàn tiền lại cho user nếu bị từ chối
+  if(st.pendingWithdraw&&st.pendingWithdraw.id===id){
+    st.pendingWithdraw.status='rejected';
+    st.pendingWithdraw.rejectReason=reason;
+    st.history.unshift({label:'Hoàn tiền — yêu cầu bị từ chối',amount:req.amt,type:'plus',time:nowTime()});
+  }
+  saveToStorage();
+  renderAdminRequests();
+}
+
+function renderProcessed(){
+  const el=document.getElementById('processed-list');
+  if(!processedRequests.length){el.innerHTML='<div class="empty">Chưa có</div>';return;}
+  el.innerHTML=processedRequests.slice(0,15).map(r=>`
+    <div class="processed-item">
+      <div>
+        <div style="font-weight:600">${r.username} — ${r.bank}</div>
+        <div class="h-time">${r.time}${r.rejectReason?' · '+r.rejectReason:''}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-weight:700">${fmt(r.amt)}</div>
+        <div class="${r.status==='approved'?'status-approved':'status-rejected'}">${r.status==='approved'?'Đã duyệt':'Từ chối'}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addAdminLog(msg){
+  adminLogs.unshift(nowTime()+' — '+msg);
+  saveToStorage();
+  const el=document.getElementById('admin-log');
+  el.innerHTML=adminLogs.slice(0,20).map(l=>`<div class="log-row">${l}</div>`).join('');
+}
+</script>
