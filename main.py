@@ -8,18 +8,18 @@ import random
 import string
 import threading
 import requests
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, request
 
 # 1. CẤU HÌNH BOT TELEGRAM
 TOKEN = '8818249568:AAGTRAGYVloZINECSOf6hAzNYQl9XJS5dWQ'
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(TOKEN, threaded=False) # Tắt threaded để tránh xung đột trên Render
 DATA_FILE = "users_data.json"
 
 # ⭐ TỰ ĐỘNG NHẬN DIỆN ADMIN QUA USERNAME TELEGRAM ⭐
 ADMIN_USERNAME = "leductai51"  
 ADMIN_ID = 0                   
 
-# 2. CẤU HÌNH GIỚI HẠN NHIỆM VỤ / NGÀY (ĐÃ ĐỔI THÀNH 1 LẦN)
+# 2. CẤU HÌNH GIỚI HẠN NHIỆM VỤ / NGÀY
 GIOI_HAN_NHIEM_VU_NGAY = 1     
 
 # 3. CẤU HÌNH API LINK4M
@@ -144,6 +144,14 @@ def tao_menu_huy():
 def web_trang_chu():
     return render_template_string(HTML_TRANG_DICH, ma_so=lay_ma_he_thong())
 
+# Tuyến đường nhận Webhook từ Telegram giúp nút bấm xử lý tức thì
+@app.route('/' + TOKEN, methods=['POST'])
+def getMessage():
+    json_string = request.get_data().decode('utf-8')
+    update = telebot.types.Update.de_json(json_string)
+    bot.process_new_updates([update])
+    return "!", 200
+
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     lay_thong_tin_user(message.from_user.id, message.from_user.username)
@@ -151,7 +159,7 @@ def send_welcome(message):
 
 
 # =======================================================
-# PANEL ADMIN & HỆ THỐNG DUYỆT LỆNH RÚT TIỀN
+# PANEL ADMIN & HỆ THỐNG DUYỆT LỆNH RÚT TIỀN (THANH TOÁN)
 # =======================================================
 
 @bot.message_handler(commands=['admin'])
@@ -169,7 +177,7 @@ def admin_panel(message):
            f"──────────────────\n"
            f"👥 Tổng thành viên: <b>{total_users} người</b>\n"
            f"💰 Tổng quỹ số dư: <b>{total_balance:,} VNĐ</b>\n\n"
-           f"💡 <b>Lệnh nhanh:</b> <code>/check [ID]</code> | <code>/cong [ID] [Tiền]</code> | <code>/thongbao [Nội dung]</code>\n\n"
+           f"💡 <b>Lệnh nhanh:</b> <code>/check [ID]</code> | <code>/cong [ID] [Tiền]</code>\n\n"
            f"📝 <b>DANH SÁCH LỆNH RÚT ĐANG CHỜ DUYỆT:</b>\n"
            f"──────────────────\n")
     
@@ -228,7 +236,7 @@ def handle_admin_withdrawal_buttons(call):
         bot.edit_message_text(f"🟢 <b>ĐÃ DUYỆT RÚT TIỀN</b>\n🆔 Mã lệnh: {tid}\n💰 Số tiền: {amount:,}đ\n👤 Tài khoản nhận: @{ticket.get('username')}", call.message.chat.id, call.message.message_id, parse_mode="HTML")
         
         try:
-            bot.send_message(int(target_uid), f"🎉 <b>RÚT TIỀN THÀNH CÔNG!</b>\n────────────────\n🆔 Mã lệnh <code>{tid}</code> của bạn đã được Admin **PHÊ DUYỆT**.\n💵 Số tiền <b>{amount:,} VNĐ</b> đã được chuyển về ví của bạn!", parse_mode="HTML")
+            bot.send_message(int(target_uid), f"🎉 <b>RÚT TIỀN THÀNH CÔNG!</b>\n────────────────\n🆔 Mã lệnh <code>{tid}</code> của bạn đã được Admin **PHÊ DUYỆT**.\n💵 Số tiền <b>{amount:,} VNĐ</b> đã được chuyển về tài khoản ngân hàng của bạn!", parse_mode="HTML")
         except: pass
         
     elif action == "reject":
@@ -240,11 +248,11 @@ def handle_admin_withdrawal_buttons(call):
                     if x.get("ticket_id") == tid: x["status"] = "REJECTED"
         luu_data(db)
         
-        bot.answer_callback_query(call.id, "❌ Đã hủy lệnh và hoàn tiền cho thành viên!")
+        bot.answer_callback_query(call.id, "❌ Đã hủy lệnh và hoàn tiền!")
         bot.edit_message_text(f"🔴 <b>ĐÃ TỪ CHỐI LỆNH RÚT</b>\n🆔 Mã lệnh: {tid}\n💰 Đã hoàn trả lại {amount:,}đ vào số dư của @{ticket.get('username')}", call.message.chat.id, call.message.message_id, parse_mode="HTML")
         
         try:
-            bot.send_message(int(target_uid), f"🛑 <b>LỆNH RÚT TIỀN BỊ TỪ CHỐI</b>\n────────────────\n🆔 Mã lệnh <code>{tid}</code> đã bị từ chối.\n💵 Số tiền <b>{amount:,} VNĐ</b> đã được **hoàn trả tự động** về số dư tài khoản của bạn.", parse_mode="HTML")
+            bot.send_message(int(target_uid), f"🛑 <b>LỆNH RÚT TIỀN BỊ TỪ CHỐI</b>\n────────────────\n🆔 Mã lệnh <code>{tid}</code> đã bị từ chối.\n💵 Số tiền <b>{amount:,} VNĐ</b> đã được hoàn trả về số dư tài khoản của bạn.", parse_mode="HTML")
         except: pass
 
 @bot.message_handler(commands=['check'])
@@ -259,10 +267,9 @@ def admin_check_user(message):
     msg = (f"🔍 <b>THÔNG TIN THÀNH VIÊN</b>\n🆔 ID: <code>{uid}</code>\n👤 Username: @{user.get('username', 'Không có')}\n💰 Số dư: <b>{user.get('balance', 0):,} VNĐ</b>\n⚡ Hôm nay: <b>{user.get('today_task_count', 0)} lượt</b>")
     bot.send_message(message.chat.id, msg, parse_mode="HTML")
 
-@bot.message_handler(commands=['cong', 'tru'])
+@bot.message_handler(commands=['cong'])
 def admin_modify_balance(message):
     if not la_admin(message): return
-    command = message.text.split()[0]
     args = message.text.split()
     if len(args) < 3: return
     uid, amount_str = args[1], args[2]
@@ -270,24 +277,9 @@ def admin_modify_balance(message):
     except: return
     db = doc_data()
     if uid not in db: return
-    if command == "/cong":
-        db[uid]["balance"] = db[uid].get("balance", 0) + amount
-    else:
-        db[uid]["balance"] = max(0, db[uid].get("balance", 0) - amount)
+    db[uid]["balance"] = db[uid].get("balance", 0) + amount
     luu_data(db)
-    bot.reply_to(message, "✅ Đã thực thi thay đổi số dư thành công.")
-
-@bot.message_handler(commands=['thongbao'])
-def admin_broadcast(message):
-    if not la_admin(message): return
-    text_split = message.text.split(' ', 1)
-    if len(text_split) < 2: return
-    noi_dung = text_split[1]
-    db = doc_data()
-    for uid in db.keys():
-        if uid not in ["system_config", "withdrawal_requests"]:
-            try: bot.send_message(int(uid), f"📢 <b>THÔNG BÁO TỪ ADMIN:</b>\n\n{noi_dung}", parse_mode="HTML")
-            except: continue
+    bot.reply_to(message, f"✅ Đã cộng {amount:,} VNĐ cho ID {uid}")
 
 
 # =======================================================
@@ -307,8 +299,8 @@ def handle_tai_khoan(message):
         f"🆔 ID của bạn: <code>{message.from_user.id}</code>\n"
         f"💰 Số dư của bạn: <b>{user['balance']:,} VNĐ</b>\n"
         f"⚡ Đã làm hôm nay: <b>{luot_hom_nay}/{GIOI_HAN_NHIEM_VU_NGAY}</b> lượt", 
-        parse_mode="HTML", 
-        reply_markup=tao_menu_chinh()
+        reply_markup=tao_menu_chinh(),
+        parse_mode="HTML"
     )
 
 @bot.message_handler(func=lambda message: message.text == "💸 Rút tiền")
@@ -324,8 +316,8 @@ def handle_rut_tien(message):
             f"💵 Số dư hiện tại: <b>{user['balance']:,} VNĐ</b>\n"
             f"📌 Hạn mức rút tối thiểu: <b>10,000 VNĐ</b>\n\n"
             f"❌ Số dư của bạn chưa đủ 10,000đ để thực hiện rút tiền.", 
-            parse_mode="HTML", 
-            reply_markup=tao_menu_chinh()
+            reply_markup=tao_menu_chinh(),
+            parse_mode="HTML"
         )
         return
 
@@ -340,8 +332,8 @@ def handle_rut_tien(message):
         f"<code>NGÂN HÀNG STK TÊNTK</code>\n\n"
         f"📌 <i>Ví dụ: MBBANK 1903456789 NGUYEN VAN A</i>\n\n"
         f"⚠️ Nhập <code>HUY</code> để hủy bỏ lệnh rút.",
-        parse_mode="HTML",
-        reply_markup=tao_menu_huy()
+        reply_markup=tao_menu_huy(),
+        parse_mode="HTML"
     )
 
 @bot.message_handler(func=lambda message: message.text == "✉️ Mời bạn")
@@ -351,8 +343,8 @@ def handle_moi_ban(message):
         f"✉️ <b>GIỚI THIỆU BẠN BÈ</b>\n"
         f"────────────────────────\n"
         f"🤝 Chia sẻ Bot cho bạn bè cùng làm nhiệm vụ để nhận ngay 10% hoa hồng trên mỗi lượt vượt link thành công!", 
-        parse_mode="HTML", 
-        reply_markup=tao_menu_chinh()
+        reply_markup=tao_menu_chinh(),
+        parse_mode="HTML"
     )
 
 @bot.message_handler(func=lambda message: message.text == "⛏️ Kiếm tiền")
@@ -369,9 +361,7 @@ def handle_kiem_tien(message):
     if user["today_task_count"] >= GIOI_HAN_NHIEM_VU_NGAY:
         bot.send_message(
             message.chat.id, 
-            f"❌ <b>Đạt giới hạn!</b>\n"
-            f"Mỗi ngày bạn chỉ được làm tối đa <b>{GIOI_HAN_NHIEM_VU_NGAY}</b> nhiệm vụ.\n"
-            f"Vui lòng quay lại vào ngày mai nhé!", 
+            f"❌ <b>Đạt giới hạn!</b>\nMỗi ngày bạn chỉ được làm tối đa <b>{GIOI_HAN_NHIEM_VU_NGAY}</b> nhiệm vụ.\nVui lòng quay lại vào ngày mai nhé!", 
             parse_mode="HTML"
         )
         return
@@ -401,13 +391,7 @@ def handle_kiem_tien(message):
         reply_markup=markup_inline, 
         parse_mode="HTML"
     )
-    
-    bot.send_message(
-        message.chat.id,
-        f"📝 <b>Ghi chú:</b> Nhập <code>HUY</code> hoặc bấm nút bên dưới để hủy nhập mã vượt link.",
-        parse_mode="HTML",
-        reply_markup=tao_menu_huy()
-    )
+    bot.send_message(message.chat.id, "📝 Nhập <code>HUY</code> để hủy bỏ.", reply_markup=tao_menu_huy(), parse_mode="HTML")
 
 # --- XỬ LÝ NHẬN TIN NHẮN CHUNG VÀ PHÂN CHIA TRẠNG THÁI ---
 @bot.message_handler(func=lambda message: True)
@@ -416,23 +400,21 @@ def handle_all_messages(message):
     user = lay_thong_tin_user(user_id)
     text = message.text.strip()
 
-    # TRƯỜNG HỢP 1: USER ĐANG TRONG TRẠNG THÁI NHẬP MÃ KIẾM TIỀN
     if user["state"] == "NHAP_MA_XAC_NHAN":
         if text.upper() in ["HUY", "HỦY", "❌ HỦY NHẬP MÃ"]:
             cap_nhat_user(user_id, "state", "NONE")
-            bot.send_message(message.chat.id, "🛑 Đã hủy trạng thái nhập mã thành công!", reply_markup=tao_menu_chinh())
+            bot.send_message(message.chat.id, "🛑 Đã hủy trạng thái nhập mã!", reply_markup=tao_menu_chinh())
             return
             
         ma_chuan = lay_ma_he_thong()
         if text.upper() != ma_chuan:
-            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại mã trên trang web vượt link.\n👉 Nhập <code>HUY</code> để hủy bỏ.", parse_mode="HTML")
+            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại mã.", parse_mode="HTML")
             return
             
         db = doc_data()
         uid_str = str(user_id)
-        
-        # Đảm bảo đồng bộ ngày giờ thực tế khi cộng tiền
         today = datetime.datetime.now().strftime("%Y-%m-%d")
+        
         if db[uid_str].get("last_task_date") != today:
             db[uid_str]["last_task_date"] = today
             db[uid_str]["today_task_count"] = 0
@@ -443,14 +425,13 @@ def handle_all_messages(message):
         db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien() 
         luu_data(db)
         
-        bot.send_message(message.chat.id, f"🎉 <b>Chính xác!</b> Bạn đã nhận được +400đ vào tài khoản.\n📊 Tiến độ hôm nay: <b>{db[uid_str]['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(message.chat.id, f"🎉 <b>Chính xác!</b> Bạn được +400đ.\n📊 Tiến độ: <b>{db[uid_str]['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
         return
 
-    # TRƯỜNG HỢP 2: USER ĐANG TRONG TRẠNG THÁI NHẬP THÔNG TIN RÚT TIỀN
     elif user["state"] == "NHAP_THONG_TIN_RUT":
         if text.upper() in ["HUY", "HỦY", "❌ HỦY NHẬP MÃ"]:
             cap_nhat_user(user_id, "state", "NONE")
-            bot.send_message(message.chat.id, "🛑 Đã hủy yêu cầu rút tiền thành công!", reply_markup=tao_menu_chinh())
+            bot.send_message(message.chat.id, "🛑 Đã hủy yêu cầu rút tiền!", reply_markup=tao_menu_chinh())
             return
             
         db = doc_data()
@@ -460,7 +441,7 @@ def handle_all_messages(message):
         if so_tien_rut < 10000:
             db[uid_str]["state"] = "NONE"
             luu_data(db)
-            bot.send_message(message.chat.id, "❌ Lỗi: Số dư không đủ hạn mức tối thiểu.", reply_markup=tao_menu_chinh())
+            bot.send_message(message.chat.id, "❌ Lỗi: Số dư không đủ hạn mức.", reply_markup=tao_menu_chinh())
             return
             
         ticket_id = "".join(random.choice(string.digits) for _ in range(5))
@@ -476,4 +457,22 @@ def handle_all_messages(message):
             "user_id": uid_str,
             "username": user.get("username", "Không có"),
             "amount": so_tien_rut,
-            "inf
+            "info": text,
+            "status": "PENDING",
+            "date": ngay_tao
+        }
+        
+        db["withdrawal_requests"][ticket_id] = gói_lệnh
+        db[uid_str]["lich_su_rut"].append({"ticket_id": ticket_id, "amount": so_tien_rut, "info": text, "status": "PENDING", "date": ngay_tao})
+        luu_data(db)
+        
+        bot.send_message(
+            message.chat.id,
+            f"✅ <b>Tạo yêu cầu rút tiền thành công!</b>\n🆔 Mã lệnh rút: <code>{ticket_id}</code>\n💰 Số tiền rút: <b>{so_tien_rut:,} VNĐ</b>\n\n⏳ Vui lòng chờ Admin xử lý duyệt tiền cho bạn!",
+            reply_markup=tao_menu_chinh(),
+            parse_mode="HTML"
+        )
+        
+        # Tự động gửi thông báo ngay lập tức cho Admin khi có người yêu cầu rút tiền
+        try:
+          
