@@ -19,7 +19,7 @@ DATA_FILE = "users_data.json"
 ADMIN_USERNAME = "leductai51"  
 ADMIN_ID = 0                   
 
-# 2. CẤU HÌNH GIỚI HẠN NHIỆM VỤ / NGÀY
+# 2. CẤU HÌNH GIỚI HẠN NHIỆM VỤ / NGÀY (ĐÃ ĐỔI THÀNH 1 LẦN)
 GIOI_HAN_NHIEM_VU_NGAY = 1     
 
 # 3. CẤU HÌNH API LINK4M
@@ -151,7 +151,7 @@ def send_welcome(message):
 
 
 # =======================================================
-# ⭐ PANEL ADMIN & HỆ THỐNG DUYỆT LỆNH RÚT TIỀN ⭐
+# PANEL ADMIN & HỆ THỐNG DUYỆT LỆNH RÚT TIỀN
 # =======================================================
 
 @bot.message_handler(commands=['admin'])
@@ -329,10 +329,8 @@ def handle_rut_tien(message):
         )
         return
 
-    # Chuyển trạng thái sang nhập thông tin
     cap_nhat_user(user_id, "state", "NHAP_THONG_TIN_RUT")
     
-    # ⭐ ĐÃ CẬP NHẬT ĐỊNH DẠNG: NGÂN HÀNG STK TÊNTK THEO YÊU CẦU ⭐
     bot.send_message(
         message.chat.id,
         f"💸 <b>KHỞI TẠO LỆNH RÚT TIỀN</b>\n"
@@ -427,11 +425,18 @@ def handle_all_messages(message):
             
         ma_chuan = lay_ma_he_thong()
         if text.upper() != ma_chuan:
-            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại.\n👉 Nhập <code>HUY</code> để hủy bỏ.", parse_mode="HTML")
+            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại mã trên trang web vượt link.\n👉 Nhập <code>HUY</code> để hủy bỏ.", parse_mode="HTML")
             return
             
         db = doc_data()
         uid_str = str(user_id)
+        
+        # Đảm bảo đồng bộ ngày giờ thực tế khi cộng tiền
+        today = datetime.datetime.now().strftime("%Y-%m-%d")
+        if db[uid_str].get("last_task_date") != today:
+            db[uid_str]["last_task_date"] = today
+            db[uid_str]["today_task_count"] = 0
+
         db[uid_str]["balance"] = db[uid_str].get("balance", 0) + 400
         db[uid_str]["today_task_count"] = db[uid_str].get("today_task_count", 0) + 1
         db[uid_str]["state"] = "NONE"
@@ -471,10 +476,4 @@ def handle_all_messages(message):
             "user_id": uid_str,
             "username": user.get("username", "Không có"),
             "amount": so_tien_rut,
-            "info": text,
-            "status": "PENDING",
-            "date": ngay_tao
-        }
-        
-        db["withdrawal_requests"][ticket_id] = gói_lệnh
-        db[uid_str]["lich_su_rut"].append({"ticket_id": ticket_id, "a
+            "inf
