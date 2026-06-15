@@ -15,10 +15,13 @@ TOKEN = '8818249568:AAGTRAGYVloZINECSOf6hAzNYQl9XJS5dWQ'
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "users_data.json"
 
-# 2. CẤU HÌNH API LINK4M
+# 2. CẤU HÌNH GIỚI HẠN NHIEM VỤ / NGÀY
+GIOI_HAN_NHIEM_VU_NGAY = 2  # Bạn có thể đổi số 5 thành số lượt tùy ý muốn
+
+# 3. CẤU HÌNH API LINK4M
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
 
-# 3. ĐỊA CHỈ WEB SERVER RENDER CỦA BẠN
+# 4. ĐỊA CHỈ WEB SERVER RENDER CỦA BẠN
 WEB_URL = "https://yen-xxch.onrender.com" 
 
 app = Flask(__name__)
@@ -34,7 +37,7 @@ def tu_dong_tao_link_link4m(url_goc):
         print(f"❌ Lỗi kết nối API Link4m: {e}")
     return None
 
-# --- GIAO DIỆN WEB ---
+# --- GIAO DIỆN WEB XÁC MINH ---
 HTML_TRANG_DICH = """
 <!DOCTYPE html>
 <html lang="vi">
@@ -127,12 +130,23 @@ def send_welcome(message):
     lay_thong_tin_user(message.from_user.id, message.from_user.username)
     bot.send_message(message.chat.id, "👋 Chào mừng bạn đến với Bot kiếm tiền!", reply_markup=tao_menu_chinh())
 
-# --- XỬ LÝ CÁC NÚT BẤM MENU CHÍNH (LUÔN ĐƯỢC ƯU TIÊN) ---
+# --- XỬ LÝ CÁC NÚT BẤM MENU CHÍNH ---
 
 @bot.message_handler(func=lambda message: message.text == "👤 Tài khoản")
 def handle_tai_khoan(message):
     user = lay_thong_tin_user(message.from_user.id)
-    bot.send_message(message.chat.id, f"💰 Số dư của bạn: <b>{user['balance']:,} VNĐ</b>", parse_mode="HTML", reply_markup=tao_menu_chinh())
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    luot_hom_nay = user['today_task_count'] if user['last_task_date'] == today else 0
+    
+    bot.send_message(
+        message.chat.id, 
+        f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n"
+        f"────────────────────────\n"
+        f"💰 Số dư của bạn: <b>{user['balance']:,} VNĐ</b>\n"
+        f"⚡ Đã làm hôm nay: <b>{luot_hom_nay}/{GIOI_HAN_NHIEM_VU_NGAY}</b> lượt", 
+        parse_mode="HTML", 
+        reply_markup=tao_menu_chinh()
+    )
 
 @bot.message_handler(func=lambda message: message.text == "💸 Rút tiền")
 def handle_rut_tien(message):
@@ -162,6 +176,26 @@ def handle_moi_ban(message):
 @bot.message_handler(func=lambda message: message.text == "⛏️ Kiếm tiền")
 def handle_kiem_tien(message):
     user_id = message.from_user.id
+    user = lay_thong_tin_user(user_id)
+    today = datetime.datetime.now().strftime("%Y-%m-%d")
+    
+    # Kiểm tra và làm mới giới hạn nếu sang ngày mới
+    if user["last_task_date"] != today:
+        cap_nhat_user(user_id, "last_task_date", today)
+        cap_nhat_user(user_id, "today_task_count", 0)
+        user["today_task_count"] = 0
+
+    # KIỂM TRA CHẶN NẾU VƯỢT QUÁ GIỚI HẠN NGÀY
+    if user["today_task_count"] >= GIOI_HAN_NHIEM_VU_NGAY:
+        bot.send_message(
+            message.chat.id, 
+            f"❌ <b>Đạt giới hạn!</b>\n"
+            f"Mỗi ngày bạn chỉ được làm tối đa <b>{GIOI_HAN_NHIEM_VU_NGAY}</b> nhiệm vụ.\n"
+            f"Vui lòng quay lại vào ngày mai nhé!", 
+            parse_mode="HTML"
+        )
+        return
+
     bot.send_message(message.chat.id, "⏳ <i>Hệ thống đang khởi tạo liên kết nhiệm vụ riêng cho bạn, vui lòng đợi vài giây...</i>", parse_mode="HTML")
     
     url_dich_thuc_te = f"{WEB_URL}/?t={int(time.time())}"
@@ -177,16 +211,17 @@ def handle_kiem_tien(message):
     
     bot.send_message(
         message.chat.id, 
-        "<b>Nhiệm vụ vượt link kiếm tiền (400đ)</b>\n"
-        "────────────────────────\n"
-        "👉 <b>Bước 1:</b> Bấm vào nút liên kết bên dưới.\n"
-        "👉 <b>Bước 2:</b> Vượt link quảng cáo thành công để lấy mã.\n"
-        "👉 <b>Bước 3:</b> Copy mã đó dán gửi vào đây để nhận tiền.", 
+        f"<b>Nhiệm vụ vượt link kiếm tiền (400đ)</b>\n"
+        f"────────────────────────\n"
+        f"👉 <b>Bước 1:</b> Bấm vào nút liên kết bên dưới.\n"
+        f"👉 <b>Bước 2:</b> Vượt link quảng cáo thành công để lấy mã.\n"
+        f"👉 <b>Bước 3:</b> Copy mã đó dán gửi vào đây để nhận tiền.\n\n"
+        f"📊 Lượt làm hôm nay của bạn: <b>{user['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", 
         reply_markup=markup, 
         parse_mode="HTML"
     )
 
-# --- XỬ LÝ NHẬN MÃ CODE (CHỈ CHẠY KHI KHÔNG BẤM NÚT MENU) ---
+# --- XỬ LÝ NHẬN MÃ CODE VÀ ĐỒNG THỜI ĐẾM LƯỢT ---
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     user_id = message.from_user.id
@@ -201,12 +236,21 @@ def handle_all_messages(message):
             
         db = doc_data()
         uid_str = str(user_id)
+        
+        # Cộng tiền + Tăng số lần làm nhiệm vụ trong ngày lên 1
         db[uid_str]["balance"] = db[uid_str].get("balance", 0) + 400
+        db[uid_str]["today_task_count"] = db[uid_str].get("today_task_count", 0) + 1
         db[uid_str]["state"] = "NONE"
-        db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien() # Đổi sang mã mới tinh ngay lập tức
+        db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien() # Đổi sang mã mới ngay lập tức
         luu_data(db)
         
-        bot.send_message(message.chat.id, "🎉 <b>Chính xác!</b> Bạn đã nhận được +400đ vào tài khoản.", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(
+            message.chat.id, 
+            f"🎉 <b>Chính xác!</b> Bạn đã nhận được +400đ vào tài khoản.\n"
+            f"📊 Tiến độ hôm nay: <b>{db[uid_str]['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", 
+            reply_markup=tao_menu_chinh(), 
+            parse_mode="HTML"
+        )
     else:
         bot.send_message(message.chat.id, "🤖 Vui lòng chọn một tính năng từ menu bên dưới.", reply_markup=tao_menu_chinh())
 
