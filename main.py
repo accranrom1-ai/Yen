@@ -20,7 +20,7 @@ ADMIN_USERNAME = "leductai51"
 ADMIN_ID = 0                   
 
 # 2. CẤU HÌNH GIỚI HẠN NHIỆM VỤ / NGÀY
-GIOI_HAN_NHIEM_VU_NGAY = 2     
+GIOI_HAN_NHIEM_VU_NGAY = 1     
 
 # 3. CẤU HÌNH API LINK4M
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
