@@ -7,33 +7,29 @@ import time
 import random
 import string
 import threading
-import requests # Thêm thư viện để gọi API Link4m
+import requests
 from flask import Flask, render_template_string
 
 # 1. CẤU HÌNH BOT TELEGRAM
 TOKEN = '8818249568:AAGTRAGYVloZINECSOf6hAzNYQl9XJS5dWQ'
 bot = telebot.TeleBot(TOKEN)
 DATA_FILE = "users_data.json"
-BOT_USERNAME = "bot_kiem_tien"
 
-# 2. CẤU HÌNH API LINK4M (LẤY TỪ ẢNH CỦA BẠN)
+# 2. CẤU HÌNH API LINK4M
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
 
-# 3. ĐỊA CHỈ WEB SERVER CỦA BẠN (Thay bằng IP VPS hoặc Tên miền của bạn)
-# Ví dụ: "http://123.45.67.89:5000" hoặc "https://tenwebcuaban.com"
-WEB_URL = "http:// THAY_IP_VPS_HOAC_DOMAIN_CỦA_BẠN_VÀO_ĐÂY :5000" 
+# 3. ĐỊA CHỈ WEB SERVER RENDER CỦA BẠN
+WEB_URL = "https://yen-xxch.onrender.com" 
 
 app = Flask(__name__)
 
 # --- HÀM TỰ ĐỘNG RÚT GỌN LINK QUA API LINK4M ---
 def tu_dong_tao_link_link4m(url_goc):
     try:
-        # Gọi API theo đúng cấu trúc trong ảnh của bạn
         api_endpoint = f"https://link4m.co/api-shorten/v2?api={LINK4M_API_KEY}&url={url_goc}"
         response = requests.get(api_endpoint, timeout=10).json()
-        
         if response.get("status") == "success":
-            return response.get("shortenedUrl") # Trả về link đã rút gọn thành công
+            return response.get("shortenedUrl")
     except Exception as e:
         print(f"❌ Lỗi kết nối API Link4m: {e}")
     return None
@@ -75,7 +71,6 @@ HTML_TRANG_DICH = """
 </html>
 """
 
-# --- CÁC HÀM XỬ LÝ DỮ LIỆU JSON ---
 def doc_data():
     if not os.path.exists(DATA_FILE): return {}
     try:
@@ -132,22 +127,48 @@ def send_welcome(message):
     lay_thong_tin_user(message.from_user.id, message.from_user.username)
     bot.send_message(message.chat.id, "👋 Chào mừng bạn đến với Bot kiếm tiền!", reply_markup=tao_menu_chinh())
 
-# --- XỬ LÝ KHI BẤM NÚT KIẾM TIỀN (GỌI API TỰ ĐỘNG) ---
+# --- XỬ LÝ CÁC NÚT BẤM MENU CHÍNH (LUÔN ĐƯỢC ƯU TIÊN) ---
+
+@bot.message_handler(func=lambda message: message.text == "👤 Tài khoản")
+def handle_tai_khoan(message):
+    user = lay_thong_tin_user(message.from_user.id)
+    bot.send_message(message.chat.id, f"💰 Số dư của bạn: <b>{user['balance']:,} VNĐ</b>", parse_mode="HTML", reply_markup=tao_menu_chinh())
+
+@bot.message_handler(func=lambda message: message.text == "💸 Rút tiền")
+def handle_rut_tien(message):
+    user = lay_thong_tin_user(message.from_user.id)
+    bot.send_message(
+        message.chat.id, 
+        f"💸 <b>RÚT TIỀN VỀ VÍ</b>\n"
+        f"────────────────────────\n"
+        f"💵 Số dư hiện tại: <b>{user['balance']:,} VNĐ</b>\n"
+        f"📌 Hạn mức rút tối thiểu: <b>10,000 VNĐ</b>\n\n"
+        f"<i>(Hệ thống đang bảo trì kênh thanh toán tự động, vui lòng tích lũy thêm!)</i>", 
+        parse_mode="HTML", 
+        reply_markup=tao_menu_chinh()
+    )
+
+@bot.message_handler(func=lambda message: message.text == "✉️ Mời bạn")
+def handle_moi_ban(message):
+    bot.send_message(
+        message.chat.id, 
+        f"✉️ <b>GIỚI THIỆU BẠN BÈ</b>\n"
+        f"────────────────────────\n"
+        f"🤝 Chia sẻ Bot cho bạn bè cùng làm nhiệm vụ để nhận ngay 10% hoa hồng trên mỗi lượt vượt link thành công!", 
+        parse_mode="HTML", 
+        reply_markup=tao_menu_chinh()
+    )
+
 @bot.message_handler(func=lambda message: message.text == "⛏️ Kiếm tiền")
 def handle_kiem_tien(message):
     user_id = message.from_user.id
-    
     bot.send_message(message.chat.id, "⏳ <i>Hệ thống đang khởi tạo liên kết nhiệm vụ riêng cho bạn, vui lòng đợi vài giây...</i>", parse_mode="HTML")
     
-    # Tạo một link đích ngẫu nhiên theo thời gian để Link4m không bắt trùng lặp
     url_dich_thuc_te = f"{WEB_URL}/?t={int(time.time())}"
-    
-    # Gọi API Link4m tự động rút gọn
     link_rut_gon_tu_dong = tu_dong_tao_link_link4m(url_dich_thuc_te)
     
     if not link_rut_gon_tu_dong:
-        # Nếu Link4m bị lỗi API, dùng link dự phòng hoặc thông báo thử lại
-        bot.send_message(message.chat.id, "❌ Hệ thống tạo link Link4m đang bận, vui lòng thử lại sau ít phút!")
+        bot.send_message(message.chat.id, "❌ Hệ thống tạo link đang bận, vui lòng thử lại sau!")
         return
 
     cap_nhat_user(user_id, "state", "NHAP_MA_XAC_NHAN")
@@ -165,34 +186,33 @@ def handle_kiem_tien(message):
         parse_mode="HTML"
     )
 
+# --- XỬ LÝ NHẬN MÃ CODE (CHỈ CHẠY KHI KHÔNG BẤM NÚT MENU) ---
 @bot.message_handler(func=lambda message: True)
 def handle_all_messages(message):
     user_id = message.from_user.id
     user = lay_thong_tin_user(user_id)
     text = message.text
 
-    if text == "👤 Tài khoản":
-        bot.send_message(message.chat.id, f"💰 Số dư của bạn: <b>{user['balance']:,} VNĐ</b>", parse_mode="HTML")
-        
-    elif user["state"] == "NHAP_MA_XAC_NHAN":
+    if user["state"] == "NHAP_MA_XAC_NHAN":
         ma_chuan = lay_ma_he_thong()
         if text.strip().upper() != ma_chuan:
-            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại mã trên web.", parse_mode="HTML")
+            bot.send_message(message.chat.id, "❌ <b>Mã sai!</b> Vui lòng kiểm tra lại mã trên trang web vượt link.", parse_mode="HTML")
             return
             
         db = doc_data()
         uid_str = str(user_id)
-        
-        # Cộng tiền và reset mã ngẫu nhiên mới
         db[uid_str]["balance"] = db[uid_str].get("balance", 0) + 400
         db[uid_str]["state"] = "NONE"
-        db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien() # Web tự động nhận mã mới
+        db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien() # Đổi sang mã mới tinh ngay lập tức
         luu_data(db)
         
-        bot.send_message(message.chat.id, "🎉 <b>Chính xác!</b> Bạn được cộng +400đ vào tài khoản.", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(message.chat.id, "🎉 <b>Chính xác!</b> Bạn đã nhận được +400đ vào tài khoản.", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+    else:
+        bot.send_message(message.chat.id, "🤖 Vui lòng chọn một tính năng từ menu bên dưới.", reply_markup=tao_menu_chinh())
 
 def khoi_chay_web():
-    app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=False, use_reloader=False)
 
 if __name__ == '__main__':
     try: bot.delete_webhook(drop_pending_updates=True)
@@ -203,4 +223,4 @@ if __name__ == '__main__':
     t.start()
     
     bot.infinity_polling()
-  
+    
