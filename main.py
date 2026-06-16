@@ -9,8 +9,13 @@ DATA_FILE = "users_data.json"
 ADMIN_USERNAME = "leductai51"
 ADMIN_ID = 0
 
+# Giới hạn số lượt làm trong ngày của từng bên
 GIOI_HAN_LINK4M = 1  
+GIOI_HAN_CLICK90S = 2 
+
+# API Keys của các hệ thống link
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
+CLICK90S_API_KEY = "nwtr_pk_1656e40ff81" 
 WEB_URL = "https://yen-xxch.onrender.com"
 
 app = Flask(__name__)
@@ -48,7 +53,7 @@ def lay_thong_tin_user(user_id, username=None):
         "balance": 0, "hoat_dong": 1, "tong_task": 0, "hoa_hong": 0, "da_moi": 0,
         "nv_hoan_thanh": 0, "state": "NONE", "lich_su_rut": [], "username": "",
         "ref_by": "", "last_task_date": "", "today_task_count": 0,
-        "today_link4m_count": 0, "current_task_type": "",
+        "today_link4m_count": 0, "today_click90s_count": 0, "current_task_type": "",
         "weekly_task_count": 0, "last_task_week": ""
     }
     for key, value in CẤU_TRÚC_CHUẨN.items():
@@ -79,6 +84,19 @@ def tu_dong_tao_link_link4m(url):
     except: pass
     return None
 
+def tu_dong_tao_link_click90s(url):
+    try:
+        res = requests.get(f"https://click90s.com/api/public/v1/st?api={CLICK90S_API_KEY}&url={url}", timeout=10)
+        if res.status_code == 200:
+            try:
+                data = res.json()
+                if "shortenedUrl" in data: return data["shortenedUrl"]
+                if "shortlink" in data: return data["shortlink"]
+            except:
+                if res.text.startswith("http"): return res.text.strip()
+    except: pass
+    return None
+
 # ==================== ĐỊNH NGHĨA MENU BÀN PHÍM ====================
 def tao_menu_chinh():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -97,7 +115,12 @@ HTML_TRANG_DICH = """<!DOCTYPE html><html><head><meta charset="UTF-8"><meta name
 
 @app.route('/')
 def web_trang_chu(): 
+    loai_link = request.args.get('type', '').lower()
     ma_goc = lay_ma_he_thong()
+    if loai_link == 'l4m':
+        ma_goc = f"{ma_goc}-L4M"
+    elif loai_link == 'c90':
+        ma_goc = f"{ma_goc}-C90"
     return render_template_string(HTML_TRANG_DICH, ma_so=ma_goc)
 
 @app.route('/' + TOKEN, methods=['POST'])
@@ -137,8 +160,9 @@ def handle_menu_navigation(m):
         u = lay_thong_tin_user(uid, m.from_user.username)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         done_l4m = u['today_link4m_count'] if u['last_task_date'] == today else 0
+        done_c90 = u['today_click90s_count'] if u['last_task_date'] == today else 0
         
-        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n👥 Đã mời: <b>{u.get('da_moi', 0)} người</b>\n🎁 Hoa hồng nhận: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n📊 Nhiệm vụ hôm nay:\n- Link4M: <b>{done_l4m}/{GIOI_HAN_LINK4M}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n👥 Đã mời: <b>{u.get('da_moi', 0)} người</b>\n🎁 Hoa hồng nhận: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n📊 Nhiệm vụ hôm nay:\n- Link4M: <b>{done_l4m}/{GIOI_HAN_LINK4M}</b>\n- Click90s: <b>{done_c90}/{GIOI_HAN_CLICK90S}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
         
     elif m.text == "💸 Rút tiền":
         u = lay_thong_tin_user(uid)
@@ -186,28 +210,42 @@ def handle_menu_navigation(m):
             cap_nhat_user(uid, "last_task_date", today)
             cap_nhat_user(uid, "today_task_count", 0)
             cap_nhat_user(uid, "today_link4m_count", 0)
+            cap_nhat_user(uid, "today_click90s_count", 0)
             u["today_link4m_count"] = 0
+            u["today_click90s_count"] = 0
             
         l4m_con = u.get("today_link4m_count", 0) < GIOI_HAN_LINK4M
+        c90_con = u.get("today_click90s_count", 0) < GIOI_HAN_CLICK90S
             
-        if not l4m_con:
-            bot.send_message(m.chat.id, f"❌ Bạn đã hoàn thành toàn bộ giới hạn nhiệm vụ hôm nay!\n(Link4M: {GIOI_HAN_LINK4M}/{GIOI_HAN_LINK4M})")
+        if not l4m_con and not c90_con:
+            bot.send_message(m.chat.id, f"❌ Bạn đã hoàn thành toàn bộ giới hạn nhiệm vụ hôm nay!\n(Link4M: {GIOI_HAN_LINK4M}/{GIOI_HAN_LINK4M}, Click90s: {GIOI_HAN_CLICK90S}/{GIOI_HAN_CLICK90S})")
             return
             
-        bot.send_message(m.chat.id, "⏳ <i>Hệ thống đang khởi tạo liên kết nhiệm vụ...</i>", parse_mode="HTML")
+        bot.send_message(m.chat.id, "⏳ <i>Hệ thống đang khởi tạo các liên kết nhiệm vụ...</i>", parse_mode="HTML")
         
         mk = types.InlineKeyboardMarkup(row_width=1)
-        link_l4m = tu_dong_tao_link_link4m(f"{WEB_URL}/?t={int(time.time())}")
+        co_link = False
         
-        if link_l4m:
-            mk.add(types.InlineKeyboardButton(f"🔗 Vượt Link Link4M ({u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M})", url=link_l4m))
-        else:
-            bot.send_message(m.chat.id, "❌ Hệ thống API đối tác đang bận, vui lòng thử lại sau vài giây!")
+        # Giao diện nút bấm được sửa đổi để hiển thị rõ số tiền thưởng nhận được (+400đ)
+        if l4m_con:
+            link_l4m = tu_dong_tao_link_link4m(f"{WEB_URL}/?t={int(time.time())}&type=l4m")
+            if link_l4m:
+                mk.add(types.InlineKeyboardButton(f"🔗 Vượt Link Link4M ({u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}) - Nhận 400đ", url=link_l4m))
+                co_link = True
+                
+        if c90_con:
+            link_c90 = tu_dong_tao_link_click90s(f"{WEB_URL}/?t={int(time.time())}&type=c90")
+            if link_c90:
+                mk.add(types.InlineKeyboardButton(f"🔗 Vượt Link Click90s ({u.get('today_click90s_count', 0)}/{GIOI_HAN_CLICK90S}) - Nhận 400đ", url=link_c90))
+                co_link = True
+                
+        if not co_link:
+            bot.send_message(m.chat.id, "❌ Các hệ thống API đối tác đang bận, vui lòng thử lại sau vài giây!")
             return
             
         cap_nhat_user(uid, "state", "NHAP_MA_XAC_NHAN")
         
-        bot.send_message(m.chat.id, f"<b>Nhiệm vụ kiếm tiền (400đ)</b>\n────────────────────────\n👉 Bước 1: Ấn vào liên kết Link4M bên dưới.\n👉 Bước 2: Vượt link quảng cáo để lấy mã xác nhận.\n👉 Bước 3: Copy mã dán vào đây để nhận thưởng.", reply_markup=mk, parse_mode="HTML")
+        bot.send_message(m.chat.id, f"<b>Nhiệm vụ kiếm tiền (400đ)</b>\n────────────────────────\n👉 Bước 1: Ấn vào một trong các liên kết khả dụng bên dưới.\n👉 Bước 2: Vượt link quảng cáo để lấy mã xác nhận.\n👉 Bước 3: Copy mã dán vào đây để nhận thưởng.", reply_markup=mk, parse_mode="HTML")
         bot.send_message(m.chat.id, "📝 Nhập hoặc ấn nút <code>HUY</code> bên dưới để hủy nhận mã.", reply_markup=tao_menu_huy(), parse_mode="HTML")
 
 # ==================== HỆ THỐNG QUẢN TRỊ ADMIN ====================
@@ -254,7 +292,7 @@ def handle_admin_buttons(c):
         db["withdrawal_requests"][tid]["status"] = "REJECTED"
         if t_uid in db: db[t_uid]["balance"] = db[t_uid].get("balance", 0) + amt
         luu_data(db)
-        bot.edit_message_text(f"🔴 <b>ĐÃ TỪ CHỐI</b>\n🆔 Mã lệnh: {tid}\n💰 Hoàn lại ví: {amt:,}đ", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        bot.edit_message_text(f"🔴 <b>ĐÃ TỪ CHỐI</b>\n🆔 Mã lệnh: {tid}\n💰 Hoàn lại ví: {amt:,}đ", c.message.chat.id, c.message.message_id, parse_mode="HTML")
         try: bot.send_message(int(t_uid), f"🛑 Lệnh rút tiền mã <code>{tid}</code> đã bị Admin từ chối. Số tiền được hoàn trả vào tài khoản.", parse_mode="HTML")
         except: pass
 
@@ -267,7 +305,7 @@ def admin_check_user(m):
     db = doc_data()
     if uid in db:
         u = db[uid]
-        bot.send_message(m.chat.id, f"🔍 <b>THÔNG TIN THÀNH VIÊN {uid}</b>\n💰 Số dư hiện tại: <b>{u.get('balance', 0):,}đ</b>\n⚡ Tiến độ hôm nay:\n- Link4M: {u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}", parse_mode="HTML")
+        bot.send_message(m.chat.id, f"🔍 <b>THÔNG TIN THÀNH VIÊN {uid}</b>\n💰 Số dư hiện tại: <b>{u.get('balance', 0):,}đ</b>\n⚡ Tiến độ hôm nay:\n- Link4M: {u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}\n- Click90s: {u.get('today_click90s_count', 0)}/{GIOI_HAN_CLICK90S}", parse_mode="HTML")
 
 @bot.message_handler(commands=['cong'])
 def admin_modify_balance(m):
@@ -300,7 +338,15 @@ def handle_all_messages(m):
         ma_goc = lay_ma_he_thong()
         input_text = text.upper()
         
-        if input_text != ma_goc:
+        if input_text == f"{ma_goc}-L4M":
+            kenh_lam = "link4m"
+        elif input_text == f"{ma_goc}-C90":
+            kenh_lam = "click90s"
+        elif input_text == ma_goc:
+            db = doc_data()
+            if db[str(uid)].get("today_link4m_count", 0) < GIOI_HAN_LINK4M: kenh_lam = "link4m"
+            else: kenh_lam = "click90s"
+        else:
             bot.send_message(m.chat.id, "❌ <b>Mã xác nhận không chính xác!</b>\n\nVui lòng kiểm tra lại mã hoặc nhập <code>HUY</code> để thoát nhiệm vụ.", parse_mode="HTML")
             return
             
@@ -313,13 +359,21 @@ def handle_all_messages(m):
             db[uid_s]["last_task_date"] = today
             db[uid_s]["today_task_count"] = 0
             db[uid_s]["today_link4m_count"] = 0
+            db[uid_s]["today_click90s_count"] = 0
         if db[uid_s].get("last_task_week") != this_week:
             db[uid_s]["last_task_week"] = this_week
             db[uid_s]["weekly_task_count"] = 0
             
-        db[uid_s]["today_link4m_count"] = db[uid_s].get("today_link4m_count", 0) + 1
-        da_lam = db[uid_s]["today_link4m_count"]
-        gioi_han = GIOI_HAN_LINK4M
+        if kenh_lam == "link4m":
+            db[uid_s]["today_link4m_count"] = db[uid_s].get("today_link4m_count", 0) + 1
+            ten_hien_thi = "Link4M"
+            da_lam = db[uid_s]["today_link4m_count"]
+            gioi_han = GIOI_HAN_LINK4M
+        else:
+            db[uid_s]["today_click90s_count"] = db[uid_s].get("today_click90s_count", 0) + 1
+            ten_hien_thi = "Click90s"
+            da_lam = db[uid_s]["today_click90s_count"]
+            gioi_han = GIOI_HAN_CLICK90S
             
         db[uid_s]["balance"] = db[uid_s].get("balance", 0) + 400
         db[uid_s]["today_task_count"] = db[uid_s].get("today_task_count", 0) + 1
@@ -335,7 +389,7 @@ def handle_all_messages(m):
 
         db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien()
         luu_data(db)
-        bot.send_message(m.chat.id, f"🎉 <b>Chính xác!</b> Bạn nhận được +400đ từ nhiệm vụ <b>Link4M</b>.\n📊 Tiến độ hôm nay: <b>{da_lam}/{gioi_han}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(m.chat.id, f"🎉 <b>Chính xác!</b> Bạn nhận được +400đ từ nhiệm vụ <b>{ten_hien_thi}</b>.\n📊 Tiến độ hôm nay: <b>{da_lam}/{gioi_han}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
         
     elif state == "NHAP_THONG_TIN_RUT":
         db = doc_data()
@@ -372,4 +426,3 @@ if __name__ == '__main__':
     time.sleep(0.5)
     bot.set_webhook(url=f"{WEB_URL}/{TOKEN}")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-        
