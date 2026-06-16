@@ -12,10 +12,12 @@ ADMIN_ID = 0
 # Giới hạn số lượt làm trong ngày của từng bên
 GIOI_HAN_LINK4M = 1  
 GIOI_HAN_CLICK90S = 2 
+GIOI_HAN_TRAFFIC68 = 2
 
 # API Keys của các hệ thống link
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
 CLICK90S_API_KEY = "nwtr_pk_1656e40ff81" 
+TRAFFIC68_API_KEY = "tf68_2727a59c0ae2aa5d6879a0f0a71762967d27046c82c95d58"
 WEB_URL = "https://yen-xxch.onrender.com"
 
 app = Flask(__name__)
@@ -53,8 +55,8 @@ def lay_thong_tin_user(user_id, username=None):
         "balance": 0, "hoat_dong": 1, "tong_task": 0, "hoa_hong": 0, "da_moi": 0,
         "nv_hoan_thanh": 0, "state": "NONE", "lich_su_rut": [], "username": "",
         "ref_by": "", "last_task_date": "", "today_task_count": 0,
-        "today_link4m_count": 0, "today_click90s_count": 0, "current_task_type": "",
-        "weekly_task_count": 0, "last_task_week": ""
+        "today_link4m_count": 0, "today_click90s_count": 0, "today_traffic68_count": 0,
+        "current_task_type": "", "weekly_task_count": 0, "last_task_week": ""
     }
     for key, value in CẤU_TRÚC_CHUẨN.items():
         if key not in db[uid]: db[uid][key] = value
@@ -97,6 +99,20 @@ def tu_dong_tao_link_click90s(url):
     except: pass
     return None
 
+def tu_dong_tao_link_traffic68(url):
+    try:
+        res = requests.get(f"https://traffic68.com/api/quicklink/st?api={TRAFFIC68_API_KEY}&url={url}", timeout=10)
+        if res.status_code == 200:
+            try:
+                data = res.json()
+                if "shortenedUrl" in data: return data["shortenedUrl"]
+                if "shortlink" in data: return data["shortlink"]
+                if "shortened_url" in data: return data["shortened_url"]
+            except:
+                if res.text.startswith("http"): return res.text.strip()
+    except: pass
+    return None
+
 # ==================== ĐỊNH NGHĨA MENU BÀN PHÍM ====================
 def tao_menu_chinh():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
@@ -121,6 +137,8 @@ def web_trang_chu():
         ma_goc = f"{ma_goc}-L4M"
     elif loai_link == 'c90':
         ma_goc = f"{ma_goc}-C90"
+    elif loai_link == 'tf68':
+        ma_goc = f"{ma_goc}-TF68"
     return render_template_string(HTML_TRANG_DICH, ma_so=ma_goc)
 
 @app.route('/' + TOKEN, methods=['POST'])
@@ -161,8 +179,9 @@ def handle_menu_navigation(m):
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         done_l4m = u['today_link4m_count'] if u['last_task_date'] == today else 0
         done_c90 = u['today_click90s_count'] if u['last_task_date'] == today else 0
+        done_tf68 = u.get('today_traffic68_count', 0) if u['last_task_date'] == today else 0
         
-        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n👥 Đã mời: <b>{u.get('da_moi', 0)} người</b>\n🎁 Hoa hồng nhận: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n📊 Nhiệm vụ hôm nay:\n- Link4M: <b>{done_l4m}/{GIOI_HAN_LINK4M}</b>\n- Click90s: <b>{done_c90}/{GIOI_HAN_CLICK90S}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n👥 Đã mời: <b>{u.get('da_moi', 0)} người</b>\n🎁 Hoa hồng nhận: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n📊 Nhiệm vụ hôm nay:\n- Link4M: <b>{done_l4m}/{GIOI_HAN_LINK4M}</b>\n- Click90s: <b>{done_c90}/{GIOI_HAN_CLICK90S}</b>\n- Traffic68: <b>{done_tf68}/{GIOI_HAN_TRAFFIC68}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
         
     elif m.text == "💸 Rút tiền":
         u = lay_thong_tin_user(uid)
@@ -211,14 +230,17 @@ def handle_menu_navigation(m):
             cap_nhat_user(uid, "today_task_count", 0)
             cap_nhat_user(uid, "today_link4m_count", 0)
             cap_nhat_user(uid, "today_click90s_count", 0)
+            cap_nhat_user(uid, "today_traffic68_count", 0)
             u["today_link4m_count"] = 0
             u["today_click90s_count"] = 0
+            u["today_traffic68_count"] = 0
             
         l4m_con = u.get("today_link4m_count", 0) < GIOI_HAN_LINK4M
         c90_con = u.get("today_click90s_count", 0) < GIOI_HAN_CLICK90S
+        tf68_con = u.get("today_traffic68_count", 0) < GIOI_HAN_TRAFFIC68
             
-        if not l4m_con and not c90_con:
-            bot.send_message(m.chat.id, f"❌ Bạn đã hoàn thành toàn bộ giới hạn nhiệm vụ hôm nay!\n(Link4M: {GIOI_HAN_LINK4M}/{GIOI_HAN_LINK4M}, Click90s: {GIOI_HAN_CLICK90S}/{GIOI_HAN_CLICK90S})")
+        if not l4m_con and not c90_con and not tf68_con:
+            bot.send_message(m.chat.id, f"❌ Bạn đã hoàn thành toàn bộ giới hạn nhiệm vụ hôm nay!\n(Link4M: {GIOI_HAN_LINK4M}/{GIOI_HAN_LINK4M}, Click90s: {GIOI_HAN_CLICK90S}/{GIOI_HAN_CLICK90S}, Traffic68: {GIOI_HAN_TRAFFIC68}/{GIOI_HAN_TRAFFIC68})")
             return
             
         bot.send_message(m.chat.id, "⏳ <i>Hệ thống đang khởi tạo các liên kết nhiệm vụ...</i>", parse_mode="HTML")
@@ -226,7 +248,6 @@ def handle_menu_navigation(m):
         mk = types.InlineKeyboardMarkup(row_width=1)
         co_link = False
         
-        # Giao diện nút bấm được sửa đổi để hiển thị rõ số tiền thưởng nhận được (+400đ)
         if l4m_con:
             link_l4m = tu_dong_tao_link_link4m(f"{WEB_URL}/?t={int(time.time())}&type=l4m")
             if link_l4m:
@@ -237,6 +258,12 @@ def handle_menu_navigation(m):
             link_c90 = tu_dong_tao_link_click90s(f"{WEB_URL}/?t={int(time.time())}&type=c90")
             if link_c90:
                 mk.add(types.InlineKeyboardButton(f"🔗 Vượt Link Click90s ({u.get('today_click90s_count', 0)}/{GIOI_HAN_CLICK90S}) - Nhận 400đ", url=link_c90))
+                co_link = True
+
+        if tf68_con:
+            link_tf68 = tu_dong_tao_link_traffic68(f"{WEB_URL}/?t={int(time.time())}&type=tf68")
+            if link_tf68:
+                mk.add(types.InlineKeyboardButton(f"🔗 Vượt Link Traffic68 ({u.get('today_traffic68_count', 0)}/{GIOI_HAN_TRAFFIC68}) - Nhận 400đ", url=link_tf68))
                 co_link = True
                 
         if not co_link:
@@ -305,7 +332,7 @@ def admin_check_user(m):
     db = doc_data()
     if uid in db:
         u = db[uid]
-        bot.send_message(m.chat.id, f"🔍 <b>THÔNG TIN THÀNH VIÊN {uid}</b>\n💰 Số dư hiện tại: <b>{u.get('balance', 0):,}đ</b>\n⚡ Tiến độ hôm nay:\n- Link4M: {u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}\n- Click90s: {u.get('today_click90s_count', 0)}/{GIOI_HAN_CLICK90S}", parse_mode="HTML")
+        bot.send_message(m.chat.id, f"🔍 <b>THÔNG TIN THÀNH VIÊN {uid}</b>\n💰 Số dư hiện tại: <b>{u.get('balance', 0):,}đ</b>\n⚡ Tiến độ hôm nay:\n- Link4M: {u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}\n- Click90s: {u.get('today_click90s_count', 0)}/{GIOI_HAN_CLICK90S}\n- Traffic68: {u.get('today_traffic68_count', 0)}/{GIOI_HAN_TRAFFIC68}", parse_mode="HTML")
 
 @bot.message_handler(commands=['cong'])
 def admin_modify_balance(m):
@@ -342,10 +369,13 @@ def handle_all_messages(m):
             kenh_lam = "link4m"
         elif input_text == f"{ma_goc}-C90":
             kenh_lam = "click90s"
+        elif input_text == f"{ma_goc}-TF68":
+            kenh_lam = "traffic68"
         elif input_text == ma_goc:
             db = doc_data()
             if db[str(uid)].get("today_link4m_count", 0) < GIOI_HAN_LINK4M: kenh_lam = "link4m"
-            else: kenh_lam = "click90s"
+            elif db[str(uid)].get("today_click90s_count", 0) < GIOI_HAN_CLICK90S: kenh_lam = "click90s"
+            else: kenh_lam = "traffic68"
         else:
             bot.send_message(m.chat.id, "❌ <b>Mã xác nhận không chính xác!</b>\n\nVui lòng kiểm tra lại mã hoặc nhập <code>HUY</code> để thoát nhiệm vụ.", parse_mode="HTML")
             return
@@ -360,6 +390,7 @@ def handle_all_messages(m):
             db[uid_s]["today_task_count"] = 0
             db[uid_s]["today_link4m_count"] = 0
             db[uid_s]["today_click90s_count"] = 0
+            db[uid_s]["today_traffic68_count"] = 0
         if db[uid_s].get("last_task_week") != this_week:
             db[uid_s]["last_task_week"] = this_week
             db[uid_s]["weekly_task_count"] = 0
@@ -369,11 +400,16 @@ def handle_all_messages(m):
             ten_hien_thi = "Link4M"
             da_lam = db[uid_s]["today_link4m_count"]
             gioi_han = GIOI_HAN_LINK4M
-        else:
+        elif kenh_lam == "click90s":
             db[uid_s]["today_click90s_count"] = db[uid_s].get("today_click90s_count", 0) + 1
             ten_hien_thi = "Click90s"
             da_lam = db[uid_s]["today_click90s_count"]
             gioi_han = GIOI_HAN_CLICK90S
+        else:
+            db[uid_s]["today_traffic68_count"] = db[uid_s].get("today_traffic68_count", 0) + 1
+            ten_hien_thi = "Traffic68"
+            da_lam = db[uid_s]["today_traffic68_count"]
+            gioi_han = GIOI_HAN_TRAFFIC68
             
         db[uid_s]["balance"] = db[uid_s].get("balance", 0) + 400
         db[uid_s]["today_task_count"] = db[uid_s].get("today_task_count", 0) + 1
