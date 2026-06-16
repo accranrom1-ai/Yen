@@ -13,6 +13,10 @@ LINK4M_API_KEY = "694cc66f558f587fcc15b845"
 WEB_URL = "https://yen-xxch.onrender.com"
 app = Flask(__name__)
 
+BOT_USERNAME = "Bot"
+try: BOT_USERNAME = bot.get_me().username
+except: pass
+
 # HÀM XỬ LÝ DỮ LIỆU CƠ BẢN
 def doc_data():
     if not os.path.exists(DATA_FILE): return {}
@@ -39,7 +43,8 @@ def lay_thong_tin_user(user_id, username=None):
     CẤU_TRÚC_CHUẨN = {
         "balance": 0, "hoat_dong": 1, "tong_task": 0, "hoa_hong": 0, "da_moi": 0,
         "nv_hoan_thanh": 0, "state": "NONE", "lich_su_rut": [], "username": "",
-        "ref_by": "", "last_task_date": "", "today_task_count": 0
+        "ref_by": "", "last_task_date": "", "today_task_count": 0,
+        "weekly_task_count": 0, "last_task_week": ""
     }
     for key, value in CẤU_TRÚC_CHUẨN.items():
         if key not in db[uid]: db[uid][key] = value
@@ -69,6 +74,7 @@ def tao_menu_chinh():
     m = types.ReplyKeyboardMarkup(resize_keyboard=True)
     m.row(types.KeyboardButton("👤 Tài khoản"), types.KeyboardButton("⛏️ Kiếm tiền"))
     m.row(types.KeyboardButton("💸 Rút tiền"), types.KeyboardButton("✉️ Mời bạn"))
+    m.row(types.KeyboardButton("🏆 BXH Tuần"))
     return m
 
 def tao_menu_huy():
@@ -90,11 +96,27 @@ def getMessage():
 # ĐIỀU HƯỚNG BOT TELEGRAM
 @bot.message_handler(commands=['start'])
 def send_welcome(m):
-    lay_thong_tin_user(m.from_user.id, m.from_user.username)
-    reset_state(m.from_user.id)
+    uid = m.from_user.id
+    db = doc_data()
+    la_user_moi = str(uid) not in db
+    lay_thong_tin_user(uid, m.from_user.username)
+    reset_state(uid)
+    
+    args = m.text.split()
+    if la_user_moi and len(args) > 1:
+        ref_id = args[1]
+        if ref_id.isdigit() and ref_id != str(uid):
+            db = doc_data()
+            if ref_id in db:
+                db[str(uid)]["ref_by"] = ref_id
+                db[ref_id]["da_moi"] = db[ref_id].get("da_moi", 0) + 1
+                luu_data(db)
+                try: bot.send_message(int(ref_id), f"✨ Bạn có thành viên mới đăng ký qua link giới thiệu!")
+                except: pass
+
     bot.send_message(m.chat.id, "👋 Chào mừng bạn!", reply_markup=tao_menu_chinh())
 
-@bot.message_handler(func=lambda m: m.text in ["👤 Tài khoản", "💸 Rút tiền", "✉️ Mời bạn", "⛏️ Kiếm tiền"])
+@bot.message_handler(func=lambda m: m.text in ["👤 Tài khoản", "💸 Rút tiền", "✉️ Mời bạn", "⛏️ Kiếm tiền", "🏆 BXH Tuần"])
 def handle_menu_navigation(m):
     uid = m.from_user.id
     reset_state(uid)
@@ -102,7 +124,7 @@ def handle_menu_navigation(m):
         u = lay_thong_tin_user(uid, m.from_user.username)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
         done = u['today_task_count'] if u['last_task_date'] == today else 0
-        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n⚡ Nhiệm vụ đã làm hôm nay: <b>{done}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(m.chat.id, f"👤 <b>THÔNG TIN TÀI KHOẢN</b>\n────────────────────────\n🆔 ID của bạn: <code>{uid}</code>\n💰 Số dư: <b>{u['balance']:,} VNĐ</b>\n👥 Số người đã mời: <b>{u.get('da_moi', 0)} người</b>\n🎁 Tiền mời bạn nhận được: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n⚡ Nhiệm vụ đã làm hôm nay: <b>{done}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
     elif m.text == "💸 Rút tiền":
         u = lay_thong_tin_user(uid)
         if u['balance'] < 20000:
@@ -111,7 +133,33 @@ def handle_menu_navigation(m):
         cap_nhat_user(uid, "state", "NHAP_THONG_TIN_RUT")
         bot.send_message(m.chat.id, f"💸 <b>RÚT TIỀN</b>\n────────────────────────\n💰 Số tiền: <b>{u['balance']:,} VNĐ</b>\n👉 Nhập mẫu: <code>TÊN NGÂN HÀNG - STK - TÊN NGƯỜI NHẬN</code>", reply_markup=tao_menu_huy(), parse_mode="HTML")
     elif m.text == "✉️ Mời bạn":
-        bot.send_message(m.chat.id, "✉️ <b>GIỚI THIỆU BẠN BÈ</b>\n────────────────────────\n🤝 Mời bạn (nhận được 10% số tiền của 1 nhiệm vụ bạn bè làm)!", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        u = lay_thong_tin_user(uid)
+        link_moi = f"https://t.me/{BOT_USERNAME}?start={uid}"
+        bot.send_message(m.chat.id, f"✉️ <b>GIỚI THIỆU BẠN BÈ</b>\n────────────────────────\n🤝 Mời bạn bè tham gia nhận ngay 10% số tiền của nhiệm vụ bạn bè làm!\n\n👥 Số người đã mời: <b>{u.get('da_moi', 0)} người</b>\n💰 Số tiền nhận từ người mời: <b>{u.get('hoa_hong', 0):,} VNĐ</b>\n\n🔗 Link giới thiệu của bạn:\n<code>{link_moi}</code>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+    elif m.text == "🏆 BXH Tuần":
+        db = doc_data()
+        this_week = datetime.datetime.now().strftime("%Y-%W")
+        ex = ["system_config", "withdrawal_requests"]
+        bxh = []
+        for k, v in db.items():
+            if k in ex: continue
+            w_count = v.get("weekly_task_count", 0)
+            if v.get("last_task_week") != this_week:
+                w_count = 0
+            if w_count > 0:
+                name = v.get("username", "").strip()
+                if not name: name = f"User {k[:5]}..."
+                else: name = f"@{name}"
+                bxh.append((name, w_count))
+        bxh.sort(key=lambda x: x[1], reverse=True)
+        msg = "🏆 <b>BẢNG XẾP HẠNG VƯỢT LINK TUẦN</b>\n────────────────────────\n"
+        if not bxh:
+            msg += "<i>Chưa có dữ liệu tuần này!</i>"
+        else:
+            for i, (name, count) in enumerate(bxh[:10], 1):
+                icon = "🥇" if i == 1 else "🥈" if i == 2 else "🥉" if i == 3 else f"<code>{i}.</code>"
+                msg += f"{icon} {name} — <b>{count}</b> lượt\n"
+        bot.send_message(m.chat.id, msg, reply_markup=tao_menu_chinh(), parse_mode="HTML")
     elif m.text == "⛏️ Kiếm tiền":
         u = lay_thong_tin_user(uid)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
@@ -222,15 +270,32 @@ def handle_all_messages(m):
         db = doc_data()
         uid_s = str(uid)
         today = datetime.datetime.now().strftime("%Y-%m-%d")
+        this_week = datetime.datetime.now().strftime("%Y-%W")
+        
+        # Kiểm tra và reset ngày mới / tuần mới
         if db[uid_s].get("last_task_date") != today:
             db[uid_s]["last_task_date"] = today
             db[uid_s]["today_task_count"] = 0
+        if db[uid_s].get("last_task_week") != this_week:
+            db[uid_s]["last_task_week"] = this_week
+            db[uid_s]["weekly_task_count"] = 0
+            
         db[uid_s]["balance"] = db[uid_s].get("balance", 0) + 400
         db[uid_s]["today_task_count"] = db[uid_s].get("today_task_count", 0) + 1
+        db[uid_s]["weekly_task_count"] = db[uid_s].get("weekly_task_count", 0) + 1
         db[uid_s]["state"] = "NONE"
+        
+        # CHIA HOA HỒNG MỜI BẠN (10% của 400đ = 40đ)
+        ref_id = db[uid_s].get("ref_by", "")
+        if ref_id and ref_id in db:
+            db[ref_id]["balance"] = db[ref_id].get("balance", 0) + 40
+            db[ref_id]["hoa_hong"] = db[ref_id].get("hoa_hong", 0) + 40
+            try: bot.send_message(int(ref_id), f"🎁 Bạn được +40đ hoa hồng từ cấp dưới làm nhiệm vụ!")
+            except: pass
+
         db["system_config"]["ma_xac_nhan"] = tao_ma_ngau_nhien()
         luu_data(db)
-        bot.send_message(m.chat.id, f"🎉 <b>Chính xác!</b> +400đ.\n📊 Tiến độ: <b>{db[uid_s]['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        bot.send_message(m.chat.id, f"🎉 <b>Chính xác!</b> +400đ.\n📊 Tiến độ ngày: <b>{db[uid_s]['today_task_count']}/{GIOI_HAN_NHIEM_VU_NGAY}</b>", reply_markup=tao_menu_chinh(), parse_mode="HTML")
     elif state == "NHAP_THONG_TIN_RUT":
         db = doc_data()
         uid_s = str(uid)
@@ -263,4 +328,4 @@ if __name__ == '__main__':
     time.sleep(0.5)
     bot.set_webhook(url=f"{WEB_URL}/{TOKEN}")
     app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
-            
+                             
