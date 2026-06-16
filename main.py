@@ -400,5 +400,30 @@ def handle_all_messages(m):
             db[uid_s]["state"] = "NONE"; luu_data(db)
             bot.send_message(m.chat.id, "❌ Lỗi hệ thống: Số dư tài khoản không đủ.", reply_markup=tao_menu_chinh())
             return
-            
+            tid = "".join(random.choice(string.digits) for _ in range(5))
+        dt = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        if "withdrawal_requests" not in db: db["withdrawal_requests"] = {}
+        if "lich_su_rut" not in db[uid_s]: db[uid_s]["lich_su_rut"] = []
+        
+        db[uid_s]["balance"] = 0
+        db[uid_s]["state"] = "NONE"
+        t_data = {"user_id": uid_s, "username": u.get("username", "Không có"), "amount": amt, "info": text, "status": "PENDING", "date": dt}
+        db["withdrawal_requests"][tid] = t_data
+        db[uid_s]["lich_su_rut"].append({"ticket_id": tid, "amount": amt, "info": text, "status": "PENDING", "date": dt})
+        luu_data(db)
+        
+        bot.send_message(m.chat.id, f"✅ Tạo lệnh rút tiền thành công!\n🆔 Mã giao dịch: <code>{tid}</code>\n💰 Số tiền rút: <b>{amt:,} VNĐ</b>\n⏳ Trạng thái: Đang chờ Admin duyệt.", reply_markup=tao_menu_chinh(), parse_mode="HTML")
+        try:
+            mk = types.InlineKeyboardMarkup()
+            mk.row(types.InlineKeyboardButton(f"✅ Duyệt {tid}", callback_data=f"apprut_{tid}"), types.InlineKeyboardButton(f"❌ Từ Chối", callback_data=f"rejrut_{tid}"))
+            bot.send_message(ADMIN_ID if ADMIN_ID != 0 else uid, f"🔔 <b>YÊU CẦU RÚT TIỀN MỚI</b>\n🆔 Mã GD: {tid}\n💵 Số tiền: <b>{amt:,}đ</b>\n🏦 STK: `{text}`", reply_markup=mk, parse_mode="HTML")
+        except: pass
+    else:
+        bot.send_message(m.chat.id, "🤖 Vui lòng chọn tính năng từ menu hệ thống bên dưới.", reply_markup=tao_menu_chinh())
+
+if __name__ == '__main__':
+    bot.remove_webhook()
+    time.sleep(0.5)
+    bot.set_webhook(url=f"{WEB_URL}/{TOKEN}")
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
     
