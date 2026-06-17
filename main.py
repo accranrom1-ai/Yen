@@ -1,4 +1,4 @@
-import telebot, json, os, datetime, time, random, string, requests
+import telebot, json, os, datetime, time, random, string, requests, urllib.parse
 from telebot import types
 from flask import Flask, render_template_string, request
 
@@ -13,7 +13,7 @@ ADMIN_ID = 0
 GIOI_HAN_LINK4M = 1  
 GIOI_HAN_LINKTOP = 2 
 
-# API Keys của các hệ thống link
+# API Keys từ các hệ thống rút gọn link của bạn
 LINK4M_API_KEY = "694cc66f558f587fcc15b845"
 LINKTOP_API_KEY = "5CnreyNDfwBTUXvQiyUwNTZXElrZaOU0DzM2VoXIndah8U"
 WEB_URL = "https://yen-xxch.onrender.com"
@@ -76,17 +76,21 @@ def la_admin(m):
     uid = m.from_user.id
     return uid == ADMIN_ID or (u and u.lower() == ADMIN_USERNAME.lower())
 
-# ==================== ĐOẠN API RÚT GỌN LINK ====================
+# ==================== ĐOẠN API RÚT GỌN LINK (ĐÃ KHẮC PHỤC LỖI) ====================
 def tu_dong_tao_link_link4m(url):
     try:
-        res = requests.get(f"https://link4m.co/api-shorten/v2?api={LINK4M_API_KEY}&url={url}", timeout=5).json()
+        # Mã hóa đường link để tránh lỗi ký tự đặc biệt như ?, &, =
+        url_ma_hoa = urllib.parse.quote(url)
+        res = requests.get(f"https://link4m.co/api-shorten/v2?api={LINK4M_API_KEY}&url={url_ma_hoa}", timeout=7).json()
         if res.get("status") == "success": return res.get("shortenedUrl")
     except: pass
     return None
 
 def tu_dong_tao_link_linktop(url):
     try:
-        res = requests.get(f"https://linktop.one/api?api={LINKTOP_API_KEY}&url={url}", timeout=5).json()
+        # Mã hóa đường link để tránh lỗi ký tự đặc biệt như ?, &, =
+        url_ma_hoa = urllib.parse.quote(url)
+        res = requests.get(f"https://linktop.one/api?api={LINKTOP_API_KEY}&url={url_ma_hoa}", timeout=7).json()
         if res.get("status") == "success": return res.get("shortenedUrl")
     except: pass
     return None
@@ -226,7 +230,7 @@ def handle_menu_navigation(m):
             text_l4m = f"🔗 Vượt Link Link4M ({u.get('today_link4m_count', 0)}/{GIOI_HAN_LINK4M}) - Nhận 400đ"
             if not link_l4m:
                 link_l4m = target_l4m
-                text_l4m += " (API Lỗi/Gốc)"
+                text_l4m += " (Hệ thống bận)"
             mk.add(types.InlineKeyboardButton(text_l4m, url=link_l4m))
                 
         # --- KHỞI TẠO LINKTOP ---
@@ -236,7 +240,7 @@ def handle_menu_navigation(m):
             text_ltop = f"🔗 Vượt Link LinkTop ({u.get('today_linktop_count', 0)}/{GIOI_HAN_LINKTOP}) - Nhận 400đ"
             if not link_ltop:
                 link_ltop = target_ltop
-                text_ltop += " (API Lỗi/Gốc)"
+                text_ltop += " (Hệ thống bận)"
             mk.add(types.InlineKeyboardButton(text_ltop, url=link_ltop))
             
         cap_nhat_user(uid, "state", "NHAP_MA_XAC_NHAN")
@@ -288,7 +292,7 @@ def handle_admin_buttons(c):
         db["withdrawal_requests"][tid]["status"] = "REJECTED"
         if t_uid in db: db[t_uid]["balance"] = db[t_uid].get("balance", 0) + amt
         luu_data(db)
-        bot.edit_message_text(f"🔴 <b>ĐÃ TỪ CHỐI</b>\n🆔 Mã lệnh: {tid}\n💰 Hoàn lại ví: {amt:,}đ", c.message.chat.id, c.message.message_id, parse_mode="HTML")
+        bot.edit_message_text(f"🔴 <b>ĐÃ TỪ CHỐI</b>\n🆔 Mã lệnh: {tid}\n💰 Hoàn lại ví: {amt:,}đ", c.message.chat.id, c.message.message_id, parse_mode="HTML")
         try: bot.send_message(int(t_uid), f"🛑 Lệnh rút tiền mã <code>{tid}</code> đã bị Admin từ chối. Số tiền được hoàn trả vào tài khoản.", parse_mode="HTML")
         except: pass
 
