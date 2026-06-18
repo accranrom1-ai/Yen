@@ -10,12 +10,10 @@ ADMIN_USERNAME = "leductai51"
 ADMIN_ID = 0
 
 # Cấu hình giới hạn số lượt làm trong ngày
-GIOI_HAN_LINK4M = 1  
-GIOI_HAN_LINKTOP = 2 
+GIOI_HAN_LINK4M = 1
 
 # API Keys từ các hệ thống rút gọn link của bạn
-LINK4M_API_KEY = "694cc66f558f587fcc15b845"
-LINKTOP_API_KEY = "5CnreyNDfwBTUXvQiyUwNTZXElrZaOU0DzM2VoXIndah8U"
+LINK4M_API_KEY = "694cc66f558f587fcc15b845
 WEB_URL = "https://yen-xxch.onrender.com"
 
 app = Flask(__name__)
