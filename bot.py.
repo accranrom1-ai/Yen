@@ -2,17 +2,42 @@ import os
 import logging
 import math
 import re
-from telegram import Update
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.constants import ParseMode
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, CallbackQueryHandler, filters
 
 # Cấu hình log
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# LẤY TOKEN TỪ ENVIRONMENT VARIABLE CỦA RENDER
-TOKEN = os.environ.get("TELEGRAM_TOKEN", "8818249568:AAGTRAGYVloZINECSOf6hAzNYQl9XJS5dWQ")
+# CẤU HÌNH BIẾN MÔI TRƯỜNG (Mặc định là leductai51 nếu không cài trên Render)
+TOKEN = os.environ.get("TELEGRAM_TOKEN", "THAY_TOKEN_CỦA_BẠN")
+ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "leductai51").replace("@", "").strip().lower()
 
+USER_FILE = "users.txt"
+
+# Hàm kiểm tra xem người gửi có phải là Admin không (dựa trên Username)
+def is_admin(update: Update) -> bool:
+    user = update.effective_user
+    if user and user.username:
+        return user.username.lower() == ADMIN_USERNAME
+    return False
+
+# Hàm đọc danh sách người dùng từ file
+def get_stored_users():
+    if not os.path.exists(USER_FILE):
+        return set()
+    with open(USER_FILE, "r") as f:
+        return set(line.strip() for line in f if line.strip())
+
+# Hàm lưu thêm người dùng mới
+def save_user(user_id):
+    users = get_stored_users()
+    if str(user_id) not in users:
+        with open(USER_FILE, "a") as f:
+            f.write(f"{user_id}\n")
+
+# Thuật toán phân tích ma trận dữ liệu
 def process_neural_matrix(hash_str: str) -> str:
     hash_str = hash_str.strip().lower().replace(" ", "")
     if not re.match(r"^[0-9a-f]+$", hash_str):
@@ -71,26 +96,122 @@ def process_neural_matrix(hash_str: str) -> str:
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    save_user(update.effective_chat.id)
     await update.message.reply_text(
         "🤖 *Neural Matrix Engine Bot Đã Sẵn Sàng!*\n\nGửi mã MD5/SHA-256 để phân tích.",
         parse_mode=ParseMode.MARKDOWN
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    save_user(update.effective_chat.id)
     response = process_neural_matrix(update.message.text)
     await update.message.reply_text(response, parse_mode=ParseMode.MARKDOWN)
 
+# --- CÁC TÍNH NĂNG TRONG BẢNG ĐIỀU KHIỂN ADMIN ---
+
+# Hàm tạo nội dung chữ cho bảng Admin
+def generate_admin_text():
+    users = get_stored_users()
+    text = (
+        f"⚙️ *BẢNG ĐIỀU KHIỂN QUẢN TRỊ VIÊN*\n"
+        f"--------------------------------------\n"
+        f"👤 *Admin:* @{ADMIN_USERNAME}\n"
+        f"👥 *Tổng số người tham gia:* `{len(users)}` người\n\n"
+        f"📢 *CÚ PHÁP PHÁT LỆNH HÀNG LOẠT:*\n"
+        f"`/baolenh [Số_Phiên] [TAI/XIU]`\n\n"
+        f"💡 *Ví dụ:* `/baolenh 88992 TAI`"
+    )
+    return text
+
+# Lệnh vào bảng admin (/admin)
+async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update):
+        return  # Không phải tài khoản @leductai51 thì bot im lặng
+    
+    # Tạo nút bấm làm mới
+    keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    await update.message.reply_text(
+        generate_admin_text(),
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=reply_markup
+    )
+
+# Xử lý khi nhấn vào nút bấm "Làm mới số liệu" trên bảng admin
+async def admin_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer() # Thông báo cho Telegram biết đã nhận được lệnh bấm nút
+    
+    if not is_admin(update):
+        return
+    
+    if query.data == "refresh_stats":
+        keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
+        reply_markup = InlineKeyboardMarkup(keyboard)
+        
+        # Sửa tin nhắn cũ thành dữ liệu mới cập nhật để tránh rác hộp thoại
+        try:
+            await query.edit_message_text(
+                generate_admin_text(),
+                parse_mode=ParseMode.MARKDOWN,
+                reply_markup=reply_markup
+            )
+        except Exception:
+            pass # Tránh báo lỗi nếu dữ liệu không có gì thay đổi khi bấm liên tục
+
+# Lệnh phát tín hiệu hàng loạt (/baolenh [phiên] [tài/xỉu])
+async def baolenh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not is_admin(update):
+        return
+    
+    if not context.args or len(context.args) < 2:
+        await update.message.reply_text("⚠️ *Sai cú pháp!* Vui lòng gõ dạng:\n`/baolenh [Số_Phiên] [TAI/XIU]`", parse_mode=ParseMode.MARKDOWN)
+        return
+
+    phien = context.args[0]
+    ketqua_raw = context.args[1].upper()
+    ketqua = "🔴 TÀI" if "TAI" in ketqua_raw else "🟢 XỈU" if "XIU" in ketqua_raw else ketqua_raw
+
+    tin_nhan_tong = (
+        f"📢 *THÔNG BÁO LỆNH TỪ ADMIN*\n"
+        f"--------------------------------------\n"
+        f"🆔 *Phiên số:* #{phien}\n"
+        f"🔮 *Hệ thống báo:* {ketqua}\n"
+        f"⚡ *Vào lệnh ngay!*"
+    )
+
+    users = get_stored_users()
+    thanh_cong = 0
+    that_bai = 0
+
+    for user_id in users:
+        try:
+            await context.bot.send_message(chat_id=int(user_id), text=tin_nhan_tong, parse_mode=ParseMode.MARKDOWN)
+            thanh_cong += 1
+        except Exception:
+            that_bai += 1
+
+    await update.message.reply_text(f"🚀 *Đã phát lệnh thành công!*\n\n✅ Gửi đến: `{thanh_cong}` người\n❌ Thất bại: `{that_bai}` người.", parse_mode=ParseMode.MARKDOWN)
+
+
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
+    
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("admin", admin_panel))
+    application.add_handler(CommandHandler("baolenh", baolenh))
+    
+    # Bộ lắng nghe sự kiện bấm nút trên bảng điều khiển
+    application.add_handler(CallbackQueryHandler(admin_button_click))
+    
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # CẤU HÌNH TỰ ĐỘNG THÍCH ỨNG VỚI RENDER (WEBHOOK)
+    # CẤU HÌNH WEBHOOK CHO RENDER
     PORT = int(os.environ.get('PORT', 8443))
-    RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL') # Render tự cấp biến này
+    RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
 
     if RENDER_URL:
-        # Chạy Webhook trên Render
         logger.info(f"Starting webhook on port {PORT} with URL {RENDER_URL}")
         application.run_webhook(
             listen="0.0.0.0",
@@ -99,10 +220,8 @@ def main() -> None:
             webhook_url=f"{RENDER_URL}/{TOKEN}"
         )
     else:
-        # Chạy Polling bình thường nếu test ở máy cục bộ
         logger.info("Starting local polling...")
         application.run_polling()
 
 if __name__ == '__main__':
     main()
-  
