@@ -4,45 +4,106 @@ import math
 import re
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.constants import ParseMode
-from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, CallbackQueryHandler, filters
+from telegram.ext import Application, CommandHandler, ContextTypes, MessageHandler, CallbackQueryHandler, ChatMemberHandler, filters
 
 # Cấu hình log
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# CẤU HÌNH BIẾN MÔI TRƯỜNG (Mặc định là leductai51 nếu không cài trên Render)
-TOKEN = os.environ.get("TELEGRAM_TOKEN", "8932525844:AAHa710Oa-hlUDn7K-NDcxiEl07FXCWLSGY")
-ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "leductai51").replace("@", "").strip().lower()
+# CẤU HÌNH BIẾN MÔI TRƯỜNG & TOKEN API CỦA BẠN
+TOKEN = "8932525844:AAHa710Oa-hlUDn7K-NDcxiEl07FXCWLSGY"
+ADMIN_USERNAME = "leductai51"
+GROUP_LINK = "https://t.me/+IyFE27J5FhBjNjI9"
 
 USER_FILE = "users.txt"
+GROUP_ID_FILE = "group_id.txt"
 
-# Hàm kiểm tra xem người gửi có phải là Admin không (dựa trên Username)
 def is_admin(update: Update) -> bool:
     user = update.effective_user
     if user and user.username:
-        return user.username.lower() == ADMIN_USERNAME
+        return user.username.lower() == ADMIN_USERNAME.lower()
     return False
 
-# Hàm đọc danh sách người dùng từ file
 def get_stored_users():
     if not os.path.exists(USER_FILE):
         return set()
     with open(USER_FILE, "r") as f:
         return set(line.strip() for line in f if line.strip())
 
-# Hàm lưu thêm người dùng mới
 def save_user(user_id):
     users = get_stored_users()
     if str(user_id) not in users:
         with open(USER_FILE, "a") as f:
             f.write(f"{user_id}\n")
 
-# Thuật toán phân tích ma trận dữ liệu
+# Hàm đọc ID nhóm được lưu tự động
+def get_group_id():
+    if os.path.exists(GROUP_ID_FILE):
+        with open(GROUP_ID_FILE, "r") as f:
+            return f.read().strip()
+    return None
+
+# --- TỰ ĐỘNG LẤY ID KHI ĐƯỢC THÊM VÀO NHÓM ---
+async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    if not update.my_chat_member:
+        return
+    chat = update.my_chat_member.chat
+    status = update.my_chat_member.new_chat_member.status
+    
+    # Nếu bot được thêm vào nhóm hoặc được lên làm Admin
+    if status in ["administrator", "member"]:
+        with open(GROUP_ID_FILE, "w") as f:
+            f.write(str(chat.id))
+        logger.info(f"🤖 Đã tự động kích hoạt và lưu ID nhóm: {chat.id}")
+        try:
+            await context.bot.send_message(
+                chat_id=chat.id,
+                text=f"🤖 *Neural Matrix Bot Kích Hoạt Thành Công!*\n\nHệ thống đã tự động đồng bộ nhóm này làm nhóm bắt buộc tham gia.",
+                parse_mode=ParseMode.MARKDOWN
+            )
+        except Exception:
+            pass
+
+# --- HÀM KIỂM TRA THÀNH VIÊN NHÓM ---
+async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE) -> bool:
+    user_id = update.effective_user.id
+    if is_admin(update):
+        return True
+        
+    group_id = get_group_id()
+    if not group_id:
+        # Nếu bot chưa được thêm vào nhóm nào, tạm thời cho mọi người dùng để tránh lỗi
+        return True
+
+    try:
+        member = await context.bot.get_chat_member(chat_id=int(group_id), user_id=user_id)
+        if member.status in ['member', 'administrator', 'creator', 'owner']:
+            return True
+    except Exception as e:
+        logger.error(f"Lỗi check member: {e}")
+
+    keyboard = [
+        [InlineKeyboardButton("🔹 Tham gia nhóm tại đây", url=GROUP_LINK)],
+        [InlineKeyboardButton("✅ Tôi đã tham gia (Xác minh)", callback_data="check_again")]
+    ]
+    reply_markup = InlineKeyboardMarkup(keyboard)
+    
+    msg_text = (
+        "⚠️ *YÊU CẦU THAM GIA NHÓM CHÍNH THỨC*\n\n"
+        "Toàn bộ tính năng phân tích ma trận dữ liệu đã bị khóa. Bạn vui lòng tham gia vào nhóm của chúng tôi để tiếp tục sử dụng."
+    )
+    
+    if update.callback_query:
+        await update.callback_query.message.reply_text(msg_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+    else:
+        await update.message.reply_text(msg_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+    return False
+
+# Thuật toán xử lý ma trận
 def process_neural_matrix(hash_str: str) -> str:
     hash_str = hash_str.strip().lower().replace(" ", "")
     if not re.match(r"^[0-9a-f]+$", hash_str):
         return "❌ *Chuỗi không hợp lệ!* Chỉ chấp nhận ký tự chuẩn Hex (0-9, a-f)."
-    
     length = len(hash_str)
     if length not in (32, 64):
         return "⚠️ *Sai cấu trúc dữ liệu!* Hệ thống chỉ hỗ trợ MD5 (32 ký tự) hoặc SHA-256 (64 ký tự)."
@@ -52,40 +113,13 @@ def process_neural_matrix(hash_str: str) -> str:
     cols = 8
     rows = length // cols
 
-    # TẦNG 1
-    main_diagonal_sum = 0
-    anti_diagonal_sum = 0
     for r in range(rows):
-        main_diagonal_sum += nibbles[(r * cols) + (r % cols)]
-        anti_diagonal_sum += nibbles[(r * cols) + ((cols - 1 - r) % cols)]
-    matrix_score += 1.5 if (main_diagonal_sum % 2 == 0) else -1.5
-    matrix_score += 1.2 if (anti_diagonal_sum % 2 == 0) else -1.2
+        matrix_score += 1.5 if (nibbles[(r * cols) + (r % cols)] % 2 == 0) else -1.5
+        matrix_score += 1.2 if (nibbles[(r * cols) + ((cols - 1 - r) % cols)] % 2 == 0) else -1.2
 
-    # TẦNG 2
-    fwd_register = 0xABCDE123
-    bwd_register = 0x321EDCBA
-    for i in range(length):
-        fwd_register ^= (nibbles[i] << (i % 7)) & 0xFFFFFFFF
-        fwd_register = ((fwd_register & 0xFFFFFFFF) >> 1) | ((fwd_register << 31) & 0xFFFFFFFF)
-        rev_idx = length - 1 - i
-        bwd_register ^= (nibbles[rev_idx] << (i % 7)) & 0xFFFFFFFF
-        bwd_register = ((bwd_register & 0xFFFFFFFF) >> 1) | ((bwd_register << 31) & 0xFFFFFFFF)
-    combined_link = (fwd_register ^ bwd_register) & 0xFFFFFFFF
-    matrix_score += 2.0 if ((combined_link & 1) == 0) else -2.0
-
-    # TẦNG 3
-    edge_sum = 0
-    for c in range(cols):
-        edge_sum += nibbles[c] + nibbles[(rows - 1) * cols + c]
-    matrix_score += 1.3 if (edge_sum % 2 == 0) else -1.3
-
-    # KẾT LUẬN
     choice = "🔴 TÀI" if matrix_score > 0 else "🟢 XỈU" if matrix_score < 0 else "⚪ BỎ QUA"
     type_label = "MD5" if length == 32 else "SHA-256"
-    
-    k = 0.5
-    x = abs(matrix_score)
-    sigmoid_rate = 50 + (49.6 / (1 + math.exp(-k * (x - 2))))
+    sigmoid_rate = 50 + (49.6 / (1 + math.exp(-0.5 * (abs(matrix_score) - 2))))
 
     return (
         f"📊 *KẾT QUẢ PHÂN TÍCH MA TRẬN KHỐI*\n"
@@ -97,76 +131,69 @@ def process_neural_matrix(hash_str: str) -> str:
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     save_user(update.effective_chat.id)
+    if not await check_membership(update, context):
+        return
     await update.message.reply_text(
         "🤖 *Neural Matrix Engine Bot Đã Sẵn Sàng!*\n\nGửi mã MD5/SHA-256 để phân tích.",
-        parse_mode=ParseMode.MARKDOWN
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=ReplyKeyboardRemove()
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     save_user(update.effective_chat.id)
+    if not await check_membership(update, context):
+        return
     response = process_neural_matrix(update.message.text)
     await update.message.reply_text(response, parse_mode=ParseMode.MARKDOWN)
 
-# --- CÁC TÍNH NĂNG TRONG BẢNG ĐIỀU KHIỂN ADMIN ---
-
-# Hàm tạo nội dung chữ cho bảng Admin
 def generate_admin_text():
     users = get_stored_users()
-    text = (
+    group_status = "🟢 Đã kết nối thành công" if get_group_id() else "🔴 Chưa kết nối nhóm"
+    return (
         f"⚙️ *BẢNG ĐIỀU KHIỂN QUẢN TRỊ VIÊN*\n"
         f"--------------------------------------\n"
         f"👤 *Admin:* @{ADMIN_USERNAME}\n"
+        f"🌐 *Trạng thái nhóm:* {group_status}\n"
         f"👥 *Tổng số người tham gia:* `{len(users)}` người\n\n"
         f"📢 *CÚ PHÁP PHÁT LỆNH HÀNG LOẠT:*\n"
-        f"`/baolenh [Số_Phiên] [TAI/XIU]`\n\n"
-        f"💡 *Ví dụ:* `/baolenh 88992 TAI`"
+        f"`/baolenh [Số_Phiên] [TAI/XIU]`"
     )
-    return text
 
-# Lệnh vào bảng admin (/admin)
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_admin(update):
-        return  # Không phải tài khoản @leductai51 thì bot im lặng
-    
-    # Tạo nút bấm làm mới
-    keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
-    reply_markup = InlineKeyboardMarkup(keyboard)
-    
-    await update.message.reply_text(
-        generate_admin_text(),
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=reply_markup
-    )
-
-# Xử lý khi nhấn vào nút bấm "Làm mới số liệu" trên bảng admin
-async def admin_button_click(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    query = update.callback_query
-    await query.answer() # Thông báo cho Telegram biết đã nhận được lệnh bấm nút
-    
-    if not is_admin(update):
         return
-    
-    if query.data == "refresh_stats":
-        keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
-        reply_markup = InlineKeyboardMarkup(keyboard)
-        
-        # Sửa tin nhắn cũ thành dữ liệu mới cập nhật để tránh rác hộp thoại
-        try:
-            await query.edit_message_text(
-                generate_admin_text(),
-                parse_mode=ParseMode.MARKDOWN,
-                reply_markup=reply_markup
-            )
-        except Exception:
-            pass # Tránh báo lỗi nếu dữ liệu không có gì thay đổi khi bấm liên tục
+    keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
+    await update.message.reply_text(generate_admin_text(), parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
 
-# Lệnh phát tín hiệu hàng loạt (/baolenh [phiên] [tài/xỉu])
+async def handle_callback_queries(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    query = update.callback_query
+    await query.answer()
+    user_id = query.from_user.id
+    
+    if query.data == "refresh_stats" and is_admin(update):
+        keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
+        try:
+            await query.edit_message_text(generate_admin_text(), parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
+        except Exception:
+            pass
+    elif query.data == "check_again":
+        group_id = get_group_id()
+        if not group_id:
+            return
+        try:
+            member = await context.bot.get_chat_member(chat_id=int(group_id), user_id=user_id)
+            if member.status in ['member', 'administrator', 'creator', 'owner']:
+                await query.edit_message_text("✅ *Xác thực thành công!*\nHãy gửi mã MD5/SHA-256 để phân tích ngay bây giờ!", parse_mode=ParseMode.MARKDOWN)
+            else:
+                await context.bot.send_message(chat_id=user_id, text="❌ Bạn vẫn chưa tham gia nhóm. Vui lòng bấm tham gia lại!", parse_mode=ParseMode.MARKDOWN)
+        except Exception:
+            await context.bot.send_message(chat_id=user_id, text="⚠️ Vui lòng cấp quyền Admin cho Bot trong nhóm để kích hoạt hệ thống kiểm tra.", parse_mode=ParseMode.MARKDOWN)
+
 async def baolenh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_admin(update):
         return
-    
     if not context.args or len(context.args) < 2:
-        await update.message.reply_text("⚠️ *Sai cú pháp!* Vui lòng gõ dạng:\n`/baolenh [Số_Phiên] [TAI/XIU]`", parse_mode=ParseMode.MARKDOWN)
+        await update.message.reply_text("⚠️ *Sai cú pháp!* Ví dụ: `/baolenh 88992 TAI`", parse_mode=ParseMode.MARKDOWN)
         return
 
     phien = context.args[0]
@@ -183,44 +210,31 @@ async def baolenh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
     users = get_stored_users()
     thanh_cong = 0
-    that_bai = 0
-
     for user_id in users:
         try:
             await context.bot.send_message(chat_id=int(user_id), text=tin_nhan_tong, parse_mode=ParseMode.MARKDOWN)
             thanh_cong += 1
         except Exception:
-            that_bai += 1
-
-    await update.message.reply_text(f"🚀 *Đã phát lệnh thành công!*\n\n✅ Gửi đến: `{thanh_cong}` người\n❌ Thất bại: `{that_bai}` người.", parse_mode=ParseMode.MARKDOWN)
-
+            pass
+    await update.message.reply_text(f"🚀 Đã gửi lệnh thành công đến `{thanh_cong}` người.", parse_mode=ParseMode.MARKDOWN)
 
 def main() -> None:
     application = Application.builder().token(TOKEN).build()
-    
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("admin", admin_panel))
     application.add_handler(CommandHandler("baolenh", baolenh))
+    application.add_handler(CallbackQueryHandler(handle_callback_queries))
     
-    # Bộ lắng nghe sự kiện bấm nút trên bảng điều khiển
-    application.add_handler(CallbackQueryHandler(admin_button_click))
+    # Bộ lắng nghe sự kiện khi Bot được thêm vào nhóm
+    application.add_handler(ChatMemberHandler(track_chats, ChatMemberHandler.MY_CHAT_MEMBER))
     
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 
-    # CẤU HÌNH WEBHOOK CHO RENDER
     PORT = int(os.environ.get('PORT', 8443))
     RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
-
     if RENDER_URL:
-        logger.info(f"Starting webhook on port {PORT} with URL {RENDER_URL}")
-        application.run_webhook(
-            listen="0.0.0.0",
-            port=PORT,
-            url_path=TOKEN,
-            webhook_url=f"{RENDER_URL}/{TOKEN}"
-        )
+        application.run_webhook(listen="0.0.0.0", port=PORT, url_path=TOKEN, webhook_url=f"{RENDER_URL}/{TOKEN}")
     else:
-        logger.info("Starting local polling...")
         application.run_polling()
 
 if __name__ == '__main__':
