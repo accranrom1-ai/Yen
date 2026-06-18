@@ -11,7 +11,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 logger = logging.getLogger(__name__)
 
 # LẤY TOKEN TỪ ENVIRONMENT VARIABLE CỦA RENDER
-TOKEN = os.environ.get("TELEGRAM_TOKEN", "THAY_TOKEN_CỦA_BẠN_NẾU_MUỐN")
+TOKEN = os.environ.get("TELEGRAM_TOKEN", "8818249568:AAGTRAGYVloZINECSOf6hAzNYQl9XJS5dWQ")
 
 def process_neural_matrix(hash_str: str) -> str:
     hash_str = hash_str.strip().lower().replace(" ", "")
