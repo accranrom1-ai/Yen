@@ -36,12 +36,34 @@ def save_user(user_id):
         with open(USER_FILE, "a") as f:
             f.write(f"{user_id}\n")
 
-# Hàm đọc ID nhóm được lưu tự động
 def get_group_id():
     if os.path.exists(GROUP_ID_FILE):
         with open(GROUP_ID_FILE, "r") as f:
             return f.read().strip()
     return None
+
+# --- TỰ ĐỘNG GỬI QUẢNG CÁO VÀO NHÓM MỖI 3 TIẾNG ---
+async def auto_send_promo(context: ContextTypes.DEFAULT_TYPE) -> None:
+    group_id = get_group_id()
+    if not group_id:
+        return
+        
+    # Lấy thông tin link bot tự động
+    bot_info = await context.bot.get_me()
+    bot_link = f"https://t.me/{bot_info.username}"
+    
+    promo_text = (
+        f"📢 *THÔNG BÁO TỪ HỆ THỐNG*\n"
+        f"--------------------------------------\n"
+        f"🎯 *Sử dụng tool Sunwin ở đây:* [{bot_link}]({bot_link})\n"
+        f"🚀 Đăng ký và bấm vào link trên để kích hoạt phiên bản mới nhất!"
+    )
+    
+    try:
+        await context.bot.send_message(chat_id=int(group_id), text=promo_text, parse_mode=ParseMode.MARKDOWN, disable_web_page_preview=True)
+        logger.info("Đã tự động gửi tin nhắn quảng cáo vào nhóm.")
+    except Exception as e:
+        logger.error(f"Lỗi gửi tin nhắn định kỳ: {e}")
 
 # --- TỰ ĐỘNG LẤY ID KHI ĐƯỢC THÊM VÀO NHÓM ---
 async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
@@ -50,15 +72,14 @@ async def track_chats(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
     chat = update.my_chat_member.chat
     status = update.my_chat_member.new_chat_member.status
     
-    # Nếu bot được thêm vào nhóm hoặc được lên làm Admin
     if status in ["administrator", "member"]:
         with open(GROUP_ID_FILE, "w") as f:
             f.write(str(chat.id))
-        logger.info(f"🤖 Đã tự động kích hoạt và lưu ID nhóm: {chat.id}")
+        logger.info(f"🤖 Đã lưu ID nhóm thành công: {chat.id}")
         try:
             await context.bot.send_message(
                 chat_id=chat.id,
-                text=f"🤖 *Neural Matrix Bot Kích Hoạt Thành Công!*\n\nHệ thống đã tự động đồng bộ nhóm này làm nhóm bắt buộc tham gia.",
+                text=f"🤖 *Neural Matrix Bot Kích Hoạt Thành Công!*\n\nHệ thống đã tự động liên kết nhóm này để chạy quảng cáo định kỳ.",
                 parse_mode=ParseMode.MARKDOWN
             )
         except Exception:
@@ -72,7 +93,6 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         
     group_id = get_group_id()
     if not group_id:
-        # Nếu bot chưa được thêm vào nhóm nào, tạm thời cho mọi người dùng để tránh lỗi
         return True
 
     try:
@@ -93,10 +113,7 @@ async def check_membership(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         "Toàn bộ tính năng phân tích ma trận dữ liệu đã bị khóa. Bạn vui lòng tham gia vào nhóm của chúng tôi để tiếp tục sử dụng."
     )
     
-    if update.callback_query:
-        await update.callback_query.message.reply_text(msg_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
-    else:
-        await update.message.reply_text(msg_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
+    await update.message.reply_text(msg_text, parse_mode=ParseMode.MARKDOWN, reply_markup=reply_markup)
     return False
 
 # Thuật toán xử lý ma trận
@@ -130,6 +147,10 @@ def process_neural_matrix(hash_str: str) -> str:
     )
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # Chỉ xử lý nhắn tin riêng với bot
+    if update.effective_chat.type != "private":
+        return
+        
     save_user(update.effective_chat.id)
     if not await check_membership(update, context):
         return
@@ -140,6 +161,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     )
 
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    # FIX LỖI SPAM: Nếu ai đó nhắn tin nói chuyện ở trong nhóm, bot sẽ im lặng bỏ qua
+    if update.effective_chat.type != "private":
+        return
+        
     save_user(update.effective_chat.id)
     if not await check_membership(update, context):
         return
@@ -148,7 +173,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 def generate_admin_text():
     users = get_stored_users()
-    group_status = "🟢 Đã kết nối thành công" if get_group_id() else "🔴 Chưa kết nối nhóm"
+    group_status = f"🟢 Đã kết nối ({get_group_id()})" if get_group_id() else "🔴 Chưa kết nối nhóm"
     return (
         f"⚙️ *BẢNG ĐIỀU KHIỂN QUẢN TRỊ VIÊN*\n"
         f"--------------------------------------\n"
@@ -160,7 +185,7 @@ def generate_admin_text():
     )
 
 async def admin_panel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    if not is_admin(update):
+    if update.effective_chat.type != "private" or not is_admin(update):
         return
     keyboard = [[InlineKeyboardButton("🔄 Làm mới số liệu", callback_data="refresh_stats")]]
     await update.message.reply_text(generate_admin_text(), parse_mode=ParseMode.MARKDOWN, reply_markup=InlineKeyboardMarkup(keyboard))
@@ -185,9 +210,9 @@ async def handle_callback_queries(update: Update, context: ContextTypes.DEFAULT_
             if member.status in ['member', 'administrator', 'creator', 'owner']:
                 await query.edit_message_text("✅ *Xác thực thành công!*\nHãy gửi mã MD5/SHA-256 để phân tích ngay bây giờ!", parse_mode=ParseMode.MARKDOWN)
             else:
-                await context.bot.send_message(chat_id=user_id, text="❌ Bạn vẫn chưa tham gia nhóm. Vui lòng bấm tham gia lại!", parse_mode=ParseMode.MARKDOWN)
+                await context.bot.send_message(chat_id=user_id, text=... or "❌ Bạn vẫn chưa tham gia nhóm. Vui lòng bấm tham gia lại!", parse_mode=ParseMode.MARKDOWN)
         except Exception:
-            await context.bot.send_message(chat_id=user_id, text="⚠️ Vui lòng cấp quyền Admin cho Bot trong nhóm để kích hoạt hệ thống kiểm tra.", parse_mode=ParseMode.MARKDOWN)
+            pass
 
 async def baolenh(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     if not is_admin(update):
@@ -225,10 +250,12 @@ def main() -> None:
     application.add_handler(CommandHandler("baolenh", baolenh))
     application.add_handler(CallbackQueryHandler(handle_callback_queries))
     
-    # Bộ lắng nghe sự kiện khi Bot được thêm vào nhóm
     application.add_handler(ChatMemberHandler(track_chats, ChatMemberHandler.MY_CHAT_MEMBER))
-    
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+
+    # CÀI ĐẶT THỜI GIAN CHẠY TỰ ĐỘNG (10800 giây = 3 tiếng)
+    if application.job_queue:
+        application.job_queue.run_repeating(auto_send_promo, interval=10800, first=10)
 
     PORT = int(os.environ.get('PORT', 8443))
     RENDER_URL = os.environ.get('RENDER_EXTERNAL_URL')
